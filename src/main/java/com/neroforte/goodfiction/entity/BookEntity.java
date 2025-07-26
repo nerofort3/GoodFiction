@@ -1,5 +1,6 @@
 package com.neroforte.goodfiction.entity;
 
+import com.neroforte.goodfiction.BookStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -33,6 +34,11 @@ public class BookEntity {
     @NotBlank
     @Size(max = 200)
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private BookStatus status;
+
 
 
     /*private Rating rating;

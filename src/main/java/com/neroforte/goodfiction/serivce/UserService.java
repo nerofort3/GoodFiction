@@ -1,22 +1,25 @@
 package com.neroforte.goodfiction.serivce;
 
 
+import com.neroforte.goodfiction.DTO.UserRegisterRequest;
+import com.neroforte.goodfiction.DTO.UserUpdateRequest;
 import com.neroforte.goodfiction.entity.UserEntity;
-import com.neroforte.goodfiction.exception.UserAlreadyExistsException;
-import com.neroforte.goodfiction.exception.UserNotFoundException;
-import com.neroforte.goodfiction.model.Password;
-import com.neroforte.goodfiction.model.User;
+import com.neroforte.goodfiction.exception.AlreadyExistsException;
+import com.neroforte.goodfiction.exception.NotFoundException;
+import com.neroforte.goodfiction.exception.PasswordsDontMatchException;
+import com.neroforte.goodfiction.DTO.Password;
+import com.neroforte.goodfiction.DTO.UserResponse;
 import com.neroforte.goodfiction.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.aspectj.weaver.ast.Not;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.beans.Transient;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -25,65 +28,65 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
-    public Optional<User> getUserByUsername(String username) throws UserNotFoundException {
+    public Optional<UserResponse> getUserByUsername(String username) throws NotFoundException {
         var userEntity = userRepository.findByUsername(username);
-        if (userEntity.isEmpty()) {
-            return Optional.ofNullable(User.entityToUser(userEntity.get()));
+        if (userEntity.isPresent()) {
+            return Optional.of(UserResponse.entityToUserResponse(userEntity.get()));
         } else {
-            throw new UserNotFoundException("user with such username not found: " + username);
+            throw new NotFoundException("user with such username not found: " + username);
         }
 
     }
 
-    public Optional<User> getUserById(Long id) throws UserNotFoundException {
+    public Optional<UserResponse> getUserById(Long id) throws NotFoundException {
         var userEntity = userRepository.findById(id);
         if (userEntity.isPresent()) {
-            return Optional.of(User.entityToUser(userEntity.get()));
+            return Optional.of(UserResponse.entityToUserResponse(userEntity.get()));
         } else {
-            throw new UserNotFoundException("user with such id not found: " + id);
+            throw new NotFoundException("user with such id not found: " + id);
         }
     }
 
-    public List<User> getAllUsers() throws UserNotFoundException {
+    public List<UserResponse> getAllUsers() throws NotFoundException {
         List<UserEntity> entities = userRepository.findAll();
-        if (!entities.isEmpty()) {
-            return entities.stream().map(User::entityToUser).toList();
+        return entities.stream().map(UserResponse::entityToUserResponse).toList();
+    }
+
+    @Transactional
+    public UserResponse saveUser(UserRegisterRequest user) throws AlreadyExistsException {
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new AlreadyExistsException("user with such username already exists: " + user.getUsername());
         } else {
-            throw new UserNotFoundException("users not found");
+            UserEntity userEntity = UserEntity.builder()
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .password(bCryptPasswordEncoder.encode(user.getPassword()))
+                    .build();
+            userRepository.save(userEntity);
+            return UserResponse.entityToUserResponse(userEntity);
         }
     }
 
-    public Optional<User> saveUser(UserEntity userEntity) throws UserAlreadyExistsException {
-        userEntity.setPassword(bCryptPasswordEncoder.encode(userEntity.getPassword()));
-        if (userRepository.findByUsername(userEntity.getUsername()).isPresent()) {
-            throw new UserAlreadyExistsException("user with such username already exists: " + userEntity.getUsername());
-        } else {
-            userEntity.setCreatedDate(LocalDateTime.now());
-            UserEntity saved = userRepository.save(userEntity);
-            return Optional.of(User.entityToUser(saved));
-        }
-    }
 
-
-    public Optional<User> updateUser(Long id, UserEntity userEntity) throws UserNotFoundException {
+    public UserResponse updateUser(Long id, UserUpdateRequest userUpdateRequest) throws NotFoundException {
         Optional<UserEntity> existingUser = userRepository.findById(id);
         if (existingUser.isPresent()) {
             UserEntity temp = existingUser.get();
-            temp.setUsername(userEntity.getUsername());
-            temp.setEmail(userEntity.getEmail());
+            temp.setUsername(userUpdateRequest.getUsername());
+            temp.setEmail(userUpdateRequest.getEmail());
             userRepository.save(temp);
-            return Optional.of(User.entityToUser(temp));
+            return UserResponse.entityToUserResponse(temp);
         } else {
-            throw new UserNotFoundException("user with such id not found: " + userEntity.getId());
+            throw new NotFoundException("user with such id not found: " + id);
         }
     }
 
-    public void updatePassword(Long id , Password password) throws Exception {
+    public void updatePassword(Long id , Password password) throws PasswordsDontMatchException {
         Optional<UserEntity> existingUser = userRepository.findById(id);
         if(existingUser.isPresent()){
             UserEntity temp = existingUser.get();
             if(!bCryptPasswordEncoder.matches(password.getOldPassword(), temp.getPassword())){
-                throw new Exception("Passwords do not match");
+                throw new PasswordsDontMatchException("Passwords do not match");
             }else{
                 temp.setPassword(bCryptPasswordEncoder.encode(password.getNewPassword()));
                 userRepository.save(temp);
@@ -92,22 +95,12 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteUser(Long id) throws UserNotFoundException {
-        Optional<UserEntity> existingUser = userRepository.findById(id);
-        if (existingUser.isPresent()) {
-            userRepository.deleteById(Math.toIntExact(id));
-        } else {
-            throw new UserNotFoundException("user with such id not found: " + id);
-        }
+    public void deleteUser(Long id) throws EmptyResultDataAccessException {
+        userRepository.deleteById(id);
     }
 
     @Transactional
-    public void deleteUserByUsername(String username) throws UserNotFoundException {
-        Optional<UserEntity> existingUser = userRepository.findByUsername(username);
-        if (existingUser.isPresent()) {
-            userRepository.deleteByUsername(username);
-        } else {
-            throw new UserNotFoundException("user with such username not found: " + username);
-        }
+    public void deleteUserByUsername(String username) throws EmptyResultDataAccessException {
+        userRepository.deleteByUsername(username);
     }
 }
