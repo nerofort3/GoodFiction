@@ -1,13 +1,12 @@
 package com.neroforte.goodfiction.entity;
 
-import com.neroforte.goodfiction.DTO.Book;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -38,22 +37,13 @@ public class UserEntity {
 
 
     @Column
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    private Set<Book> books = new HashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserBookListItem> bookListItems = new ArrayList<>();
 
 
     @PrePersist
     private void autoSetCreatedDate(){
         this.createdDate = LocalDateTime.now();
     }
-
-
-    public UserEntity(String username, String email, String password) {
-        this.username = username;
-        this.email = email;
-        this.password = password;
-    }
-
 
 }

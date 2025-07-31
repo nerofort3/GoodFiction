@@ -5,13 +5,17 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Data
+@Builder
 @Table(name = "books")
 @NoArgsConstructor
+@AllArgsConstructor
 public class BookEntity {
 
     @Id
@@ -26,29 +30,35 @@ public class BookEntity {
     @NotBlank
     private String author;
 
+
+    @Column(unique = true,nullable = false)
+    @NotBlank
+    private String openLibraryKey;
+
+
+    @Column(length = 100)
+    @NotBlank
+    private int coverID;
+
+    @Column
+    @NotNull
+    private int firstPublishYear;
+
+    @Column(unique = true,nullable = false)
+    @NotBlank
+    private String isbn;
+
+
     @Column
     @NotNull
     private double externalRating;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     @NotBlank
-    @Size(max = 200)
     private String description;
-
-    @Enumerated(EnumType.STRING)
-    @Column
-    private BookStatus status;
-
 
 
     /*private Rating rating;
         TODO add average rating based on the this website`s users score
     */
-
-    public BookEntity(String title, String author, double externalRating) {
-        this.title = title;
-        this.author = author;
-        this.externalRating = externalRating;
-    }
-
 }

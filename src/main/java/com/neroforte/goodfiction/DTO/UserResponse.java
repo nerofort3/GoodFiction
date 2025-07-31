@@ -1,6 +1,5 @@
 package com.neroforte.goodfiction.DTO;
 
-import com.neroforte.goodfiction.entity.BookEntity;
 import com.neroforte.goodfiction.entity.UserEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +22,7 @@ public class UserResponse {
 
     private LocalDateTime createdDate;
 
-    private Set<Book> books = new HashSet<>();
+    private Set<OpenLibraryBookDoc> openLibraryBookDocs = new HashSet<>();
 
 
     public static UserResponse entityToUserResponse(UserEntity userEntity) {
