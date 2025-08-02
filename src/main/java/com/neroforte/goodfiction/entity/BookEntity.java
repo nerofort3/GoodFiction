@@ -22,11 +22,11 @@ public class BookEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @Column(length = 100)
+    @Column(length = 300)
     @NotBlank
     private String title;
 
-    @Column(length = 100)
+    @Column(length = 300)
     @NotBlank
     private String author;
 
@@ -36,13 +36,12 @@ public class BookEntity {
     private String openLibraryKey;
 
 
-    @Column(length = 100)
-    @NotBlank
-    private int coverID;
+    @Column(length = 300)
+    private int cover_i;
 
     @Column
     @NotNull
-    private int firstPublishYear;
+    private Integer firstPublishYear;
 
     @Column(unique = true,nullable = false)
     @NotBlank

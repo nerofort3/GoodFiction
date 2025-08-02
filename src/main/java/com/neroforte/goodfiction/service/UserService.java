@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction.serivce;
+package com.neroforte.goodfiction.service;
 
 
 import com.neroforte.goodfiction.DTO.UserRegisterRequest;
@@ -11,18 +11,16 @@ import com.neroforte.goodfiction.DTO.Password;
 import com.neroforte.goodfiction.DTO.UserResponse;
 import com.neroforte.goodfiction.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
-import org.aspectj.weaver.ast.Not;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;

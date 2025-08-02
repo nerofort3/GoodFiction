@@ -2,10 +2,9 @@ package com.neroforte.goodfiction.controller;
 
 import com.neroforte.goodfiction.DTO.UserRegisterRequest;
 import com.neroforte.goodfiction.DTO.UserUpdateRequest;
-import com.neroforte.goodfiction.entity.UserEntity;
 import com.neroforte.goodfiction.DTO.Password;
 import com.neroforte.goodfiction.DTO.UserResponse;
-import com.neroforte.goodfiction.serivce.UserService;
+import com.neroforte.goodfiction.service.UserService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;

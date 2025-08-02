@@ -1,5 +1,6 @@
 package com.neroforte.goodfiction.DTO;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class OpenLibraryWork {
 
     private String title;
@@ -21,16 +23,22 @@ public class OpenLibraryWork {
 
     private List<String> isbn;
 
-    private Integer cover_i;
+    private List<Integer> covers;
 
     private String key;
 
     private double externalRating;
 
-    private String description;
+    private Description description;
 
     private List<String> subjects;
 
-    private List<String> excerpts;
+    //private List<String> excerpts;
+
+    public String getSafeDescription() {
+        return description != null && description.getValue() != null
+                ? description.getValue()
+                : "No description";
+    }
 
 }
