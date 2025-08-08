@@ -16,6 +16,8 @@ public class RestTemplateConfig {
     }
 
 
+
+
     @Bean("asyncExecutor")
     public Executor asyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

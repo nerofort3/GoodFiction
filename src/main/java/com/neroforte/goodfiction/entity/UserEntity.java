@@ -36,7 +36,6 @@ public class UserEntity {
     private LocalDateTime createdDate;
 
 
-    @Column
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserBookListItem> bookListItems = new ArrayList<>();
 

@@ -1,5 +1,6 @@
 package com.neroforte.goodfiction.DTO;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.neroforte.goodfiction.entity.BookEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,24 +29,11 @@ public class BookResponse {
 
     private String description;
 
-    private double rating;
 
+
+    private double externalRating;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> subjects;
 
-
-
-//    private List<String> excerpts;
-
-    public static BookResponse bookEntityToBookResponse(BookEntity entity) {
-        return BookResponse.builder()
-                .title(entity.getTitle())
-                .author(entity.getAuthor())
-                .openLibraryKey(entity.getOpenLibraryKey())
-                .cover_i(entity.getCover_i())
-                .firstPublishYear(entity.getFirstPublishYear())
-                .isbn(entity.getIsbn())
-                .description(entity.getDescription())
-                .rating(entity.getExternalRating())
-                .build();
-    }
 }

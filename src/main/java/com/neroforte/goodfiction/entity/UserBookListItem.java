@@ -31,8 +31,8 @@ public class UserBookListItem {
     @Enumerated(EnumType.STRING)
     private BookStatus bookStatus;
 
-//    @Column
-//    private Integer userRating;
+    @Column
+    private Integer userRating;
 
 
 

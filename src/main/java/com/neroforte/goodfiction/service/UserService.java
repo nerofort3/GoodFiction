@@ -1,18 +1,18 @@
 package com.neroforte.goodfiction.service;
 
 
-import com.neroforte.goodfiction.DTO.UserRegisterRequest;
-import com.neroforte.goodfiction.DTO.UserUpdateRequest;
+import com.neroforte.goodfiction.DTO.*;
+import com.neroforte.goodfiction.mapper.UserMapper;
 import com.neroforte.goodfiction.entity.UserEntity;
 import com.neroforte.goodfiction.exception.AlreadyExistsException;
 import com.neroforte.goodfiction.exception.NotFoundException;
 import com.neroforte.goodfiction.exception.PasswordsDontMatchException;
-import com.neroforte.goodfiction.DTO.Password;
-import com.neroforte.goodfiction.DTO.UserResponse;
 import com.neroforte.goodfiction.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,29 +25,27 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final UserMapper userMapper;
 
-    public Optional<UserResponse> getUserByUsername(String username) throws NotFoundException {
+    public UserResponse getUserByUsername(String username) throws NotFoundException {
         var userEntity = userRepository.findByUsername(username);
         if (userEntity.isPresent()) {
-            return Optional.of(UserResponse.entityToUserResponse(userEntity.get()));
+            return userMapper.userToUserResponse(userEntity.get());
         } else {
             throw new NotFoundException("user with such username not found: " + username);
         }
 
     }
 
-    public Optional<UserResponse> getUserById(Long id) throws NotFoundException {
-        var userEntity = userRepository.findById(id);
-        if (userEntity.isPresent()) {
-            return Optional.of(UserResponse.entityToUserResponse(userEntity.get()));
-        } else {
-            throw new NotFoundException("user with such id not found: " + id);
-        }
+    public UserResponse getUserById(Long id) throws NotFoundException {
+        var userEntity = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such username not found: " + id));
+        return userMapper.userToUserResponse(userEntity);
     }
 
-    public List<UserResponse> getAllUsers() throws NotFoundException {
-        List<UserEntity> entities = userRepository.findAll();
-        return entities.stream().map(UserResponse::entityToUserResponse).toList();
+    public List<UserResponse> getAllUsers(int limit) throws NotFoundException {
+        Pageable pageable = PageRequest.of(0, limit);
+        List<UserEntity> entities = userRepository.findAll(pageable).getContent();
+        return entities.stream().map(userMapper::userToUserResponse).toList();
     }
 
     @Transactional
@@ -55,13 +53,9 @@ public class UserService {
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             throw new AlreadyExistsException("user with such username already exists: " + user.getUsername());
         } else {
-            UserEntity userEntity = UserEntity.builder()
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .password(bCryptPasswordEncoder.encode(user.getPassword()))
-                    .build();
+            UserEntity userEntity = userMapper.userRegisterToUserEntity(user);
             userRepository.save(userEntity);
-            return UserResponse.entityToUserResponse(userEntity);
+            return userMapper.userToUserResponse(userEntity);
         }
     }
 
@@ -73,7 +67,7 @@ public class UserService {
             temp.setUsername(userUpdateRequest.getUsername());
             temp.setEmail(userUpdateRequest.getEmail());
             userRepository.save(temp);
-            return UserResponse.entityToUserResponse(temp);
+            return userMapper.userToUserResponse(temp);
         } else {
             throw new NotFoundException("user with such id not found: " + id);
         }

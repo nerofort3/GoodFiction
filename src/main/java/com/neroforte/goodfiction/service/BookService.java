@@ -8,6 +8,7 @@ import com.neroforte.goodfiction.DTO.OpenLibraryBookDoc;
 import com.neroforte.goodfiction.DTO.OpenLibrarySearchResponse;
 import com.neroforte.goodfiction.DTO.OpenLibraryWork;
 import com.neroforte.goodfiction.entity.BookEntity;
+import com.neroforte.goodfiction.mapper.BookMapper;
 import com.neroforte.goodfiction.repository.BookRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -36,20 +37,22 @@ public class BookService {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final Executor asyncExecutor;
+    private final BookMapper bookMapper;
 
-    private static final String SEARCH_BY_TITLE_URL = "https://openlibrary.org/search.json?title={title}&limit=5&fields=key,title,author_name,cover_i,isbn,first_publish_year";
-    private static final String SEARCH_BY_AUTHOR_NAME_URL = "https://openlibrary.org/search.json?author={author}&limit=5&fields=key,title,author_name,cover_i,isbn,first_publish_year";
+
+    private static final String SEARCH_BY_TITLE_URL = "https://openlibrary.org/search.json?title={title}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
+    private static final String SEARCH_BY_AUTHOR_NAME_URL = "https://openlibrary.org/search.json?author={author}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
     private static final String WORKS_URL = "https://openlibrary.org%s.json";
     private static final String RATINGS_URL = "https://openlibrary.org%s/ratings.json";
 
 
     @SneakyThrows
     @Transactional
-    public List<BookResponse> findOrFetchBookByTitle(String title) throws RuntimeException {
+    public List<BookResponse> findOrFetchBookByTitle(String title, int limit) throws RuntimeException {
         List<BookEntity> found = findBookByTitleInDB(title);
         if (found.isEmpty()) {
             long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_TITLE_URL,title).get().getBody();
+            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_TITLE_URL,title, limit).get().getBody();
             long end = System.currentTimeMillis();
             log.info("Time spent searching : {} ms", end - start);
             start = System.currentTimeMillis();
@@ -59,18 +62,18 @@ public class BookService {
             return results;
         } else {
             System.out.println("Found in db");
-            return found.stream().map(BookResponse::bookEntityToBookResponse).collect(Collectors.toList());
+            return found.stream().map(bookMapper::bookToBookResponse).collect(Collectors.toList());
         }
     }
 
 
     @SneakyThrows
     @Transactional
-    public List<BookResponse> findOrFetchBookByAuthorName(String author) throws RuntimeException {
+    public List<BookResponse> findOrFetchBookByAuthorName(String author, int limit) throws RuntimeException {
         List<BookEntity> found = findBookByAuthorNameInDB(author);
         if (found.isEmpty()) {
             long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_AUTHOR_NAME_URL,author).get().getBody();
+            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_AUTHOR_NAME_URL,author,limit).get().getBody();
             long end = System.currentTimeMillis();
             log.info("Time spent searching : {} ms", end - start);
             start = System.currentTimeMillis();
@@ -80,7 +83,7 @@ public class BookService {
             return results;
         }else {
             System.out.println("Found in db");
-            return found.stream().map(BookResponse::bookEntityToBookResponse).collect(Collectors.toList());
+            return found.stream().map(bookMapper::bookToBookResponse).collect(Collectors.toList());
         }
     }
 
@@ -95,9 +98,9 @@ public class BookService {
     }
 
 
-    private CompletableFuture<ResponseEntity<OpenLibrarySearchResponse>> searchBookByParam(String url, String param) throws RuntimeException {
+    private CompletableFuture<ResponseEntity<OpenLibrarySearchResponse>> searchBookByParam(String url, String param,int limit ) throws RuntimeException {
         return CompletableFuture.completedFuture(restClient.get()
-                .uri(url, param)
+                .uri(url, param, limit)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, ((request, response1) -> {
@@ -135,7 +138,7 @@ public class BookService {
                 .title(doc.getTitle())
                 .author(doc.getAuthor_name() != null ? doc.getAuthor_name().getFirst() : "Unknown")
                 .openLibraryKey(doc.getKey())
-                .cover_i(doc.getCover_i() != null ? doc.getCover_i() : random.nextInt(1000000))
+                .cover_i(doc.getCover_i() != null ? doc.getCover_i() : -1)
                 .firstPublishYear(doc.getFirst_publish_year() != null ? doc.getFirst_publish_year() : 1666)
                 .isbn(isbn)
                 .externalRating(externalRating)
@@ -151,7 +154,8 @@ public class BookService {
         BookEntity book = mapToBookEntity(work, doc, rating);
         book = bookRepository.save(book);
 
-        BookResponse response = BookResponse.bookEntityToBookResponse(book);
+        BookResponse response = bookMapper.bookToBookResponse(book);
+
         response.setSubjects(work.getSubjects());
 
         return response;
@@ -160,7 +164,7 @@ public class BookService {
     private ResponseEntity<OpenLibraryWork> fetchWorkDetails(String workKey) throws RuntimeException {
 
         String workUrl = String.format(WORKS_URL, workKey);
-        ResponseEntity<OpenLibraryWork> workResponse = restClient.get()
+        return restClient.get()
                 .uri(workUrl)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
@@ -168,7 +172,6 @@ public class BookService {
                     throw new RuntimeException("External API Error");
                 }))
                 .toEntity(OpenLibraryWork.class);
-        return workResponse;
     }
 
     private double openLibrarySearchRating(String workKey) {
@@ -198,4 +201,7 @@ public class BookService {
         bookRepository.deleteById(id);
     }
 
+    public BookResponse createBook(OpenLibraryWork bookWork) {
+        return null;
+    }
 }

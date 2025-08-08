@@ -14,23 +14,23 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @AllArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/all")
-    public List<UserResponse> findAllUsers() {
-        return userService.getAllUsers();
+    @GetMapping()
+    public List<UserResponse> findAllUsers(@RequestParam(required = false , defaultValue = "10") int limit) throws RuntimeException {
+        return userService.getAllUsers(limit);
     }
 
     @GetMapping("/{id}")
     public UserResponse findUserById(@PathVariable Long id) {
-        return userService.getUserById(id).get();
+        return userService.getUserById(id);
     }
 
-    @PostMapping("create_user")
+    @PostMapping()
     public UserResponse createUser(@RequestBody @Valid UserRegisterRequest user) {
         return userService.saveUser(user);
     }
@@ -52,7 +52,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully");
     }
 
-    @DeleteMapping("/u/{username}")
+    @DeleteMapping("/username/{username}")
     public ResponseEntity<?> deleteUserByUsername(@PathVariable String username) {
         userService.deleteUserByUsername(username);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully");
