@@ -13,5 +13,4 @@ public interface BookMapper {
     @Mapping(target = "subjects", ignore = true)
     BookResponse bookToBookResponse(BookEntity book);
 
-    BookEntity responseToBookEntity(BookResponse book);
 }

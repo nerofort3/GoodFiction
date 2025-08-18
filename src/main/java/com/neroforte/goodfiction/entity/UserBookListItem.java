@@ -3,12 +3,14 @@ package com.neroforte.goodfiction.entity;
 import com.neroforte.goodfiction.BookStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.userdetails.User;
 @Entity
 @Table(name = "user_books")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserBookListItem {
@@ -17,11 +19,9 @@ public class UserBookListItem {
     @GeneratedValue
     private Long id;
 
-
     @ManyToOne
     @JoinColumn(name="user_id", nullable = false)
     private UserEntity user;
-
 
     @ManyToOne
     @JoinColumn(name="book_id", nullable = false)

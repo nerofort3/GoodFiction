@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction.config;
+package com.neroforte.goodfiction;
 
 import com.neroforte.goodfiction.entity.UserEntity;
 import org.springframework.security.core.GrantedAuthority;
@@ -7,12 +7,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Collectors;
 
 public class UserDetailsImpl implements UserDetails {
 
-    private UserEntity user;
+    private final UserEntity user;
 
     public UserDetailsImpl(UserEntity user) {
         this.user = user;
@@ -21,6 +20,7 @@ public class UserDetailsImpl implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Arrays.stream(user.getRoles().split(", "))
+                .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
@@ -28,6 +28,11 @@ public class UserDetailsImpl implements UserDetails {
     @Override
     public String getPassword() {
         return user.getPassword();
+    }
+
+
+    public Long getId() {
+        return user.getId();
     }
 
     @Override

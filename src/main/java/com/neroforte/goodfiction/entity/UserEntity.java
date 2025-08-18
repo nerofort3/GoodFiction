@@ -33,8 +33,10 @@ public class UserEntity {
     private String password;
 
     @Column
-    private LocalDateTime createdDate;
+    private String roles;
 
+    @Column
+    private LocalDateTime createdDate;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserBookListItem> bookListItems = new ArrayList<>();

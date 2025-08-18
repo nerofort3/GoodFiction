@@ -3,6 +3,7 @@ package com.neroforte.goodfiction.service;
 import com.neroforte.goodfiction.UserDetailsImpl;
 import com.neroforte.goodfiction.entity.UserEntity;
 import com.neroforte.goodfiction.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -12,9 +13,9 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class UserDetailServiceImpl implements UserDetailsService {
 
-    @Autowired
     private final UserRepository userRepository;
 
 

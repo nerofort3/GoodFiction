@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction;
+package com.neroforte.goodfiction.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,8 +14,6 @@ public class RestTemplateConfig {
     public RestClient restClient(RestClient.Builder builder) {
         return builder.build();
     }
-
-
 
 
     @Bean("asyncExecutor")

@@ -8,6 +8,7 @@ import com.neroforte.goodfiction.DTO.OpenLibraryBookDoc;
 import com.neroforte.goodfiction.DTO.OpenLibrarySearchResponse;
 import com.neroforte.goodfiction.DTO.OpenLibraryWork;
 import com.neroforte.goodfiction.entity.BookEntity;
+import com.neroforte.goodfiction.exception.NotFoundException;
 import com.neroforte.goodfiction.mapper.BookMapper;
 import com.neroforte.goodfiction.repository.BookRepository;
 import jakarta.transaction.Transactional;
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +44,7 @@ public class BookService {
 
     private static final String SEARCH_BY_TITLE_URL = "https://openlibrary.org/search.json?title={title}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
     private static final String SEARCH_BY_AUTHOR_NAME_URL = "https://openlibrary.org/search.json?author={author}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
+    private static final String SEARCH_BY_ISBN_URL = "https://openlibrary.org/isbn/%s";
     private static final String WORKS_URL = "https://openlibrary.org%s.json";
     private static final String RATINGS_URL = "https://openlibrary.org%s/ratings.json";
 
@@ -52,7 +55,7 @@ public class BookService {
         List<BookEntity> found = findBookByTitleInDB(title);
         if (found.isEmpty()) {
             long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_TITLE_URL,title, limit).get().getBody();
+            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_TITLE_URL, title, limit).get().getBody();
             long end = System.currentTimeMillis();
             log.info("Time spent searching : {} ms", end - start);
             start = System.currentTimeMillis();
@@ -73,7 +76,7 @@ public class BookService {
         List<BookEntity> found = findBookByAuthorNameInDB(author);
         if (found.isEmpty()) {
             long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_AUTHOR_NAME_URL,author,limit).get().getBody();
+            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_AUTHOR_NAME_URL, author, limit).get().getBody();
             long end = System.currentTimeMillis();
             log.info("Time spent searching : {} ms", end - start);
             start = System.currentTimeMillis();
@@ -81,7 +84,7 @@ public class BookService {
             end = System.currentTimeMillis();
             log.info("Time spent fetching : {} ms", end - start);
             return results;
-        }else {
+        } else {
             System.out.println("Found in db");
             return found.stream().map(bookMapper::bookToBookResponse).collect(Collectors.toList());
         }
@@ -89,16 +92,16 @@ public class BookService {
 
 
     private List<BookEntity> findBookByAuthorNameInDB(String authorName) throws RuntimeException {
-        return bookRepository.findByAuthorContainingIgnoreCase(authorName);
+        return bookRepository.findByAuthorContainingIgnoreCase(authorName).orElseThrow(() -> new NotFoundException("Books by this author were not found"));
     }
 
 
-    private List<BookEntity> findBookByTitleInDB(String title) {
-        return bookRepository.findByTitleContainingIgnoreCase(title);
+    private List<BookEntity> findBookByTitleInDB(String title) throws RuntimeException {
+        return bookRepository.findByTitleContainingIgnoreCase(title).orElseThrow(() -> new NotFoundException("Books with such title were not found"));
     }
 
 
-    private CompletableFuture<ResponseEntity<OpenLibrarySearchResponse>> searchBookByParam(String url, String param,int limit ) throws RuntimeException {
+    private CompletableFuture<ResponseEntity<OpenLibrarySearchResponse>> searchBookByParam(String url, String param, int limit) throws RuntimeException {
         return CompletableFuture.completedFuture(restClient.get()
                 .uri(url, param, limit)
                 .accept(MediaType.APPLICATION_JSON)
@@ -109,9 +112,6 @@ public class BookService {
                 }))
                 .toEntity(OpenLibrarySearchResponse.class));
     }
-
-
-
 
 
     private CompletableFuture<List<BookResponse>> fetchWorkDetails(OpenLibrarySearchResponse response) throws RuntimeException {
@@ -132,7 +132,7 @@ public class BookService {
         String isbn = Optional.ofNullable(doc.getIsbn())
                 .filter(list -> !list.isEmpty())
                 .map(list -> list.get(list.size() - 1))
-                .orElse("unknown_"+ random.nextInt()  );
+                .orElse("unknown_" + random.nextInt());
 
         return BookEntity.builder()
                 .title(doc.getTitle())
@@ -190,7 +190,8 @@ public class BookService {
             throw new IllegalStateException("Average rating wasn't found or not a number");
         }
     }
-//      TODO - implement CRUD for book entity
+
+    //      TODO - implement CRUD for book entity
 //    public BookResponse updateBook(BookResponse book) {
 //
 //
@@ -202,6 +203,11 @@ public class BookService {
     }
 
     public BookResponse createBook(OpenLibraryWork bookWork) {
+        log.info("some sht");
         return null;
+    }
+
+    public String getBookTitleById(Long bookId) {
+        return bookRepository.getBookEntityById(bookId).get().getTitle();
     }
 }
