@@ -21,4 +21,6 @@ public interface UserBookListRepository extends JpaRepository <UserBookListItem,
 
 
     List<UserBookListItem> findByUserId(Long userId, Pageable pageable);
+
+    Optional<UserBookListItem> findByUserIdAndBookTitle(Long userId, String title);
 }

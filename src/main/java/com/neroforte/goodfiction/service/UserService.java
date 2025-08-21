@@ -37,6 +37,11 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("user with such id not found: " + id)));
     }
 
+    public UserEntity getUserEntityById(Long id) throws NotFoundException {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
+    }
+
     public List<UserResponse> getAllUsers(int limit) throws NotFoundException {
         Pageable pageable = PageRequest.of(0, limit);
         List<UserEntity> entities = userRepository.findAll(pageable).getContent();

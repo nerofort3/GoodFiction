@@ -23,4 +23,8 @@ public class UserBookListItemResponse {
 
     private Integer userRating;
 
+    private Double finishedPercentage;
+
+    private String review;
+
 }

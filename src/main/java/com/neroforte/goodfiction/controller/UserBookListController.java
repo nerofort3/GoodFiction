@@ -27,7 +27,7 @@ public class UserBookListController {
     @GetMapping("byStatus")
     @PreAuthorize("isAuthenticated()")
     public List<UserBookListItemResponse> findAllBooksByStatus(
-            @RequestParam(required = false, defaultValue = "WANT_TO_READ") String status,
+            @RequestParam(required = false, defaultValue = "FINISHED") String status,
             @RequestParam(required = false, defaultValue = "25") int limit,
             Authentication authentication
     ) {
@@ -46,10 +46,10 @@ public class UserBookListController {
     }
 
 
-    @PostMapping("{bookId}")
+    @PostMapping("/{bookId}")
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse addBookToShelf(
-            @RequestParam(required = false, defaultValue = "WANT_TO_READ") String status,
+            @RequestParam(required = false, defaultValue = "FINISHED") String status,
             @RequestParam(required = false, defaultValue = "0") int rating,
             @PathVariable long bookId,
             Authentication authentication
@@ -58,17 +58,44 @@ public class UserBookListController {
         return userBookListService.addBookToShelf(status, bookId, userId, rating);
     }
 
+    @PostMapping("/title/{title}")
+    @PreAuthorize("isAuthenticated()")
+    public UserBookListItemResponse addBookToShelfByTitle(
+            @RequestParam(required = false, defaultValue = "FINISHED") String status,
+            @RequestParam(required = false, defaultValue = "0") int rating,
+            @PathVariable String title,
+            Authentication authentication
+    ) {
+        Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        return userBookListService.addBookToShelfByTitle(status, userId, title, rating);
+    }
+
+
     @PatchMapping("/{bookId}/update")
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse updateBook(
             @RequestParam(required = false) Optional<String> status,
             @RequestParam(required = false) Optional<Integer> rating,
+            @RequestParam(required = false) Optional<Double> finishedPercentage,
             @PathVariable long bookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return userBookListService.updateBook(status, rating, userId, bookId);
+        return userBookListService.updateBook(status, finishedPercentage, rating, userId, bookId);
+
     }
+
+    @PatchMapping("/{bookId}/review")
+    @PreAuthorize("isAuthenticated()")
+    public UserBookListItemResponse updateBookReview(
+            @RequestParam(required = false) String review,
+            @PathVariable long bookId,
+            Authentication authentication
+    ) {
+        Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        return userBookListService.updateReview(review, userId, bookId);
+    }
+
 
     @DeleteMapping("/{bookId}")
     @PreAuthorize("isAuthenticated()")

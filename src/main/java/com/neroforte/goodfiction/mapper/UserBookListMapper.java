@@ -20,11 +20,4 @@ public interface UserBookListMapper {
     @Mapping(target = "bookId", source = "book.id")
     UserBookListItemResponse userBookListToUserBookListItemResponse(UserBookListItem userBookListItem);
 
-    default String mapUserIdToUsername(Long userId, @Autowired UserService userService) {
-        return userService.getUsernameById(userId);
-    }
-
-    default String mapBookIdToBookTitle(Long bookId, @Autowired BookService bookService) {
-        return bookService.getBookTitleById(bookId);
-    }
 }
