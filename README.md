@@ -8,7 +8,7 @@ A REST API service for managing a personal library (Goodreads inspired).
 - Manage user shelves:
     - Want to Read
     - Currently Reading
-    - Already Read
+    - Finished
 - Search books by title or author's name (integration with OpenLibrary API).
 - API documentation via Swagger/OpenAPI.
 
