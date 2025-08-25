@@ -27,26 +27,25 @@ public class UserService {
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final UserMapper userMapper;
 
-    public UserResponse getUserByUsername(String username) throws NotFoundException {
-        return userMapper.userToUserResponse(userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("user with such username not found: " + username)));
-    }
 
     public UserResponse getUserById(Long id) throws NotFoundException {
         return userMapper.userToUserResponse(userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("user with such id not found: " + id)));
     }
 
+
     public UserEntity getUserEntityById(Long id) throws NotFoundException {
         return userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
     }
+
 
     public List<UserResponse> getAllUsers(int limit) throws NotFoundException {
         Pageable pageable = PageRequest.of(0, limit);
         List<UserEntity> entities = userRepository.findAll(pageable).getContent();
         return entities.stream().map(userMapper::userToUserResponse).toList();
     }
+
 
     @Transactional
     public UserResponse saveUser(UserRegisterRequest user) throws AlreadyExistsException {
@@ -63,15 +62,18 @@ public class UserService {
 
 
     public UserResponse updateUser(Long id, UserUpdateRequest userUpdateRequest) throws NotFoundException {
-        UserEntity existingUser = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
+        UserEntity existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
         existingUser.setUsername(userUpdateRequest.getUsername());
         existingUser.setEmail(userUpdateRequest.getEmail());
         userRepository.save(existingUser);
         return userMapper.userToUserResponse(existingUser);
     }
 
+
     public void updatePassword(Long id, Password password) throws PasswordsDontMatchException {
-        UserEntity existingUser = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
+        UserEntity existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
         if (!bCryptPasswordEncoder.matches(password.getOldPassword(), existingUser.getPassword())) {
             throw new PasswordsDontMatchException("Passwords do not match");
         } else {
@@ -80,17 +82,16 @@ public class UserService {
         }
     }
 
+
     @Transactional
     public void deleteUser(Long id) throws EmptyResultDataAccessException {
         userRepository.deleteById(id);
     }
+
 
     @Transactional
     public void deleteUserByUsername(String username) throws EmptyResultDataAccessException {
         userRepository.deleteByUsername(username);
     }
 
-    public String getUsernameById(Long userId) {
-        return userRepository.findById(userId).get().getUsername();
-    }
 }

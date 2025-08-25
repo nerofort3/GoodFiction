@@ -1,10 +1,8 @@
-package com.neroforte.goodfiction.service;
+package com.neroforte.goodfiction;
 
-import com.neroforte.goodfiction.UserDetailsImpl;
 import com.neroforte.goodfiction.entity.UserEntity;
 import com.neroforte.goodfiction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

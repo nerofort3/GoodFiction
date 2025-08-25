@@ -35,7 +35,9 @@ public class UserBookListService {
     private final UserBookListRepository userBookListRepository;
     private final UserBookListMapper userBookListMapper;
 
-    public List<UserBookListItemResponse> findBookListItemsByStatus(String status, int limit, long userId) {
+    public List<UserBookListItemResponse> findBookListItemsByStatus(String status,
+                                                                    int limit,
+                                                                    long userId) {
 
         UserEntity user = userService.getUserEntityById(userId);
 
