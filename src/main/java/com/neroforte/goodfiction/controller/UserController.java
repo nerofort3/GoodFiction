@@ -4,7 +4,7 @@ import com.neroforte.goodfiction.DTO.UserRegisterRequest;
 import com.neroforte.goodfiction.DTO.UserUpdateRequest;
 import com.neroforte.goodfiction.DTO.Password;
 import com.neroforte.goodfiction.DTO.UserResponse;
-import com.neroforte.goodfiction.UserDetailsImpl;
+import com.neroforte.goodfiction.config.UserDetailsImpl;
 import com.neroforte.goodfiction.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

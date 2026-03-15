@@ -1,213 +1,159 @@
 package com.neroforte.goodfiction.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.neroforte.goodfiction.DTO.BookResponse;
-import com.neroforte.goodfiction.DTO.OpenLibraryBookDoc;
-import com.neroforte.goodfiction.DTO.OpenLibrarySearchResponse;
-import com.neroforte.goodfiction.DTO.OpenLibraryWork;
+import com.neroforte.goodfiction.DTO.GoogleBooksResponse;
 import com.neroforte.goodfiction.entity.BookEntity;
-import com.neroforte.goodfiction.exception.NotFoundException;
 import com.neroforte.goodfiction.mapper.BookMapper;
 import com.neroforte.goodfiction.repository.BookRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.servlet.view.RedirectView;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookService {
 
-    private final BookRepository bookRepository;
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
-    private final Executor asyncExecutor;
-    private final BookMapper bookMapper;
+    private final BookRepository bookRepository;
+    private final BookMapper googleBookMapper;
 
+    @Value("${google.books.api-key}")
+    private String apiKey;
 
-    private static final String SEARCH_BY_TITLE_URL = "https://openlibrary.org/search.json?title={title}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
-    private static final String SEARCH_BY_AUTHOR_NAME_URL = "https://openlibrary.org/search.json?author={author}&limit={limit}&fields=key,title,author_name,cover_i,isbn,first_publish_year";
-    private static final String SEARCH_BY_ISBN_URL = "https://openlibrary.org/isbn/%s";
-    private static final String WORKS_URL = "https://openlibrary.org%s.json";
-    private static final String RATINGS_URL = "https://openlibrary.org%s/ratings.json";
+    @Value("${google.books.base-url}")
+    private String baseUrl;
 
-
-    @SneakyThrows
     @Transactional
-    public List<BookResponse> findOrFetchBookByTitle(String title, int limit) throws RuntimeException {
-        List<BookEntity> found = findBookByTitleInDB(title);
-        if (found.isEmpty()) {
-            long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_TITLE_URL, title, limit).get().getBody();
-            long end = System.currentTimeMillis();
-            log.info("Time spent searching : {} ms", end - start);
-            start = System.currentTimeMillis();
-            List<BookResponse> results = fetchWorkDetails(response).get();
-            end = System.currentTimeMillis();
-            log.info("Time spent fetching : {} ms", end - start);
-            return results;
-        } else {
-            System.out.println("Found in db");
-            return found.stream().map(bookMapper::bookToBookResponse).collect(Collectors.toList());
+    public List<BookResponse> searchAndPersist(String query) {
+        log.info("Searching and persisting books for query: {}", query);
+
+        List<GoogleBooksResponse.Item> googleItems = fetchFromGoogle(query);
+        if (googleItems.isEmpty()) {
+            return Collections.emptyList();
         }
-    }
 
-
-    @SneakyThrows
-    @Transactional
-    public List<BookResponse> findOrFetchBookByAuthorName(String author, int limit) throws RuntimeException {
-        List<BookEntity> found = findBookByAuthorNameInDB(author);
-        if (found.isEmpty()) {
-            long start = System.currentTimeMillis();
-            final OpenLibrarySearchResponse response = searchBookByParam(SEARCH_BY_AUTHOR_NAME_URL, author, limit).get().getBody();
-            long end = System.currentTimeMillis();
-            log.info("Time spent searching : {} ms", end - start);
-            start = System.currentTimeMillis();
-            List<BookResponse> results = fetchWorkDetails(response).get();
-            end = System.currentTimeMillis();
-            log.info("Time spent fetching : {} ms", end - start);
-            return results;
-        } else {
-            System.out.println("Found in db");
-            return found.stream().map(bookMapper::bookToBookResponse).collect(Collectors.toList());
-        }
-    }
-
-
-    private List<BookEntity> findBookByAuthorNameInDB(String authorName) throws RuntimeException {
-        return bookRepository.findByAuthorContainingIgnoreCase(authorName).orElseThrow(() -> new NotFoundException("Books by this author were not found"));
-    }
-
-
-    private List<BookEntity> findBookByTitleInDB(String title) throws RuntimeException {
-        return bookRepository.findByTitleContainingIgnoreCase(title).orElseThrow(() -> new NotFoundException("Books with such title were not found"));
-    }
-
-
-    private CompletableFuture<ResponseEntity<OpenLibrarySearchResponse>> searchBookByParam(String url, String param, int limit) throws RuntimeException {
-        return CompletableFuture.completedFuture(restClient.get()
-                .uri(url, param, limit)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, ((request, response1) -> {
-                    log.warn("Failed to load books for this author: {}", param);
-                    throw new RuntimeException("External API Error");
-                }))
-                .toEntity(OpenLibrarySearchResponse.class));
-    }
-
-
-    private CompletableFuture<List<BookResponse>> fetchWorkDetails(OpenLibrarySearchResponse response) throws RuntimeException {
-        List<OpenLibraryBookDoc> docs = response.getDocs();
-
-        List<CompletableFuture<BookResponse>> fetched = docs.stream()
-                .map(doc -> CompletableFuture.supplyAsync(() -> processBookDoc(doc), asyncExecutor))
+        return googleItems.stream()
+                .map(this::processSingleBookResponse)
                 .toList();
-
-        return CompletableFuture.allOf(fetched.toArray(new CompletableFuture[0]))
-                .thenApply(v -> fetched.stream().map(CompletableFuture::join).collect(Collectors.toList()));
-
     }
 
-    private BookEntity mapToBookEntity(OpenLibraryWork openLibraryWork, OpenLibraryBookDoc doc, double externalRating) {
-        Random random = new Random();
+    @Transactional
+    public List<BookEntity> searchByTitle(String title) {
+        log.info("Searching books by title: {}", title);
+        // Google Books API supports specific field searches using "intitle:"
+        List<GoogleBooksResponse.Item> googleItems = fetchFromGoogle("intitle:" + title);
 
-        String isbn = Optional.ofNullable(doc.getIsbn())
-                .filter(list -> !list.isEmpty())
-                .map(list -> list.get(list.size() - 1))
-                .orElse("unknown_" + random.nextInt());
+        if (googleItems.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        return BookEntity.builder()
-                .title(doc.getTitle())
-                .author(doc.getAuthor_name() != null ? doc.getAuthor_name().getFirst() : "Unknown")
-                .openLibraryKey(doc.getKey())
-                .cover_i(doc.getCover_i() != null ? doc.getCover_i() : -1)
-                .firstPublishYear(doc.getFirst_publish_year() != null ? doc.getFirst_publish_year() : 1666)
-                .isbn(isbn)
-                .externalRating(externalRating)
-                .description(openLibraryWork.getSafeDescription())
-                .build();
+        return googleItems.stream()
+                .map(this::processSingleBookEntity)
+                .toList();
     }
 
-    private BookResponse processBookDoc(OpenLibraryBookDoc doc) {
-        String workKey = doc.getKey();
-        OpenLibraryWork work = fetchWorkDetails(workKey).getBody();
+    @Transactional
+    public List<BookResponse> searchByAuthor(String authorName) {
+        log.info("Searching books by author: {}", authorName);
 
-        double rating = openLibrarySearchRating(workKey);
-        BookEntity book = mapToBookEntity(work, doc, rating);
-        book = bookRepository.save(book);
+        List<GoogleBooksResponse.Item> googleItems = fetchFromGoogle("inauthor:" + authorName);
 
-        BookResponse response = bookMapper.bookToBookResponse(book);
+        if (googleItems.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        response.setSubjects(work.getSubjects());
-
-        return response;
+        return googleItems.stream()
+                .map(this::processSingleBookResponse)
+                .toList();
     }
 
-    private ResponseEntity<OpenLibraryWork> fetchWorkDetails(String workKey) throws RuntimeException {
+    @Transactional
+    public BookEntity findOrCreateBook(String googleId) {
+        Optional<BookEntity> existing = bookRepository.findByGoogleId(googleId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
 
-        String workUrl = String.format(WORKS_URL, workKey);
-        return restClient.get()
-                .uri(workUrl)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, ((req, res) -> {
-                    throw new RuntimeException("External API Error");
-                }))
-                .toEntity(OpenLibraryWork.class);
+        return fetchFromGoogleByIdAndSave(googleId);
     }
 
-    private double openLibrarySearchRating(String workKey) {
+    private List<GoogleBooksResponse.Item> fetchFromGoogle(String query) {
         try {
-            String ratingUrl = String.format(RATINGS_URL, workKey);
-            String jsonResponse = restClient.get()
-                    .uri(ratingUrl)
+            String modifiedQuery = query + "+subject:fiction";
+
+            GoogleBooksResponse response = restClient.get()
+                    .uri(baseUrl + "?q={q}&langRestrict=en&maxResults=10&key={key}",
+                            modifiedQuery, apiKey)
                     .retrieve()
-                    .body(String.class);
+                    .body(GoogleBooksResponse.class);
 
-            JsonNode rootNode = objectMapper.readTree(jsonResponse);
-            JsonNode averageRaringNode = rootNode.path("summary").path("average");
+            return response.items().stream()
+                    .filter(item -> {
+                        String lang = item.volumeInfo().language();
+                        return lang == null || !"ru".equalsIgnoreCase(lang);
+                    })
+                    .sorted((book1, book2) -> {
+                        // PRIORITIZE UKRAINIAN BOOKS
+                        String lang1 = book1.volumeInfo().language();
+                        String lang2 = book2.volumeInfo().language();
 
-            return averageRaringNode.asDouble();
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Average rating wasn't found or not a number");
+                        boolean isUk1 = "uk".equalsIgnoreCase(lang1);
+                        boolean isUk2 = "uk".equalsIgnoreCase(lang2);
+
+                        if (isUk1 && !isUk2) return -1;
+                        if (!isUk1 && isUk2) return 1;
+                        return 0;
+                    })
+                    .limit(25)
+                    .toList();
+        } catch (Exception e) {
+            log.error("Google Books API call failed for query: {}", query, e);
+            return Collections.emptyList();
         }
     }
 
-    //      TODO - implement CRUD for book entity
-//    public BookResponse updateBook(BookResponse book) {
-//
-//
-//        return null;
-//    }
-    @Transactional
-    public void deleteBook(Long id) throws EmptyResultDataAccessException {
-        bookRepository.deleteById(id);
+    private BookEntity fetchFromGoogleByIdAndSave(String googleId) {
+        log.info("Fetching details for Google ID: {}", googleId);
+        try {
+            GoogleBooksResponse.Item item = restClient.get()
+                    .uri(baseUrl + "/{id}?key={key}", googleId, apiKey)
+                    .retrieve()
+                    .body(GoogleBooksResponse.Item.class);
+
+            if (item == null) {
+                throw new IllegalArgumentException("Book not found on Google Books: " + googleId);
+            }
+
+            return processSingleBookEntity(item);
+        } catch (Exception e) {
+            throw new RuntimeException("Could not fetch book details", e);
+        }
     }
 
-    public BookResponse createBook(OpenLibraryWork bookWork) {
-        log.info("some sht");
-        return null;
+    private BookEntity processSingleBookEntity(GoogleBooksResponse.Item item) {
+        String googleId = item.id();
+
+        Optional<BookEntity> existing = bookRepository.findByGoogleId(googleId);
+
+        if (existing.isPresent()) {
+            return existing.get();
+        } else {
+            BookEntity newEntity = googleBookMapper.toEntity(item);
+            return bookRepository.save(newEntity);
+        }
     }
 
-    public String getBookTitleById(Long bookId) {
-        return bookRepository.getBookEntityById(bookId).get().getTitle();
+    private BookResponse processSingleBookResponse(GoogleBooksResponse.Item item) {
+        BookEntity entity = processSingleBookEntity(item);
+        return googleBookMapper.toResponse(entity);
     }
 }

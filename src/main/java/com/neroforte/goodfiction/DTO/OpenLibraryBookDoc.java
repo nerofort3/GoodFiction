@@ -11,24 +11,21 @@ import java.util.Collections;
 import java.util.List;
 
 @Builder
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class OpenLibraryBookDoc {
-    private String title;
+public record OpenLibraryBookDoc(
+        String title,
 
-    private List<String> author_name;
+        List<String> authorName,
 
-    private Integer first_publish_year;
+        Integer firstPublishYear,
 
-    private List<String> isbn;
+        List<String> isbn,
 
-    private Integer cover_i;
+        Integer coverI,
 
-    private String key;
+        String key,
 
-    private Integer ratings_count;
+        Integer ratingsCount,
 
-//    private String description;
-
+        String description
+) {
 }

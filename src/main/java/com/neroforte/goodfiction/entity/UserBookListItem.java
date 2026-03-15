@@ -1,6 +1,5 @@
 package com.neroforte.goodfiction.entity;
 
-import com.neroforte.goodfiction.BookStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

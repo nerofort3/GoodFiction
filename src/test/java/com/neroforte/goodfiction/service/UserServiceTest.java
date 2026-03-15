@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -60,12 +61,11 @@ class UserServiceTest {
         user.setRoles("ROLE_USER");
     }
 
-
     @Test
     void getUserById_found_returnsMappedResponse() {
         //given
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        UserResponse response = new UserResponse();
+        UserResponse response = new UserResponse(1L,"", "", Instant.now());
         when(userMapper.userToUserResponse(user)).thenReturn(response);
         //when
         UserResponse actualResponse = userService.getUserById(1L);
@@ -106,7 +106,7 @@ class UserServiceTest {
         //given
         when(userRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(new UserEntity(), new UserEntity())));
-        when(userMapper.userToUserResponse(any(UserEntity.class))).thenReturn(new UserResponse());
+        when(userMapper.userToUserResponse(any(UserEntity.class))).thenReturn(new UserResponse(0L, "", "", Instant.now()));
         //when
         var list = userService.getAllUsers(2);
         //then
@@ -129,9 +129,7 @@ class UserServiceTest {
     @Test
     void saveUser_whenNew_encodesPassword_setsRole_savesUser() {
         //given
-        UserRegisterRequest request = new UserRegisterRequest();
-        request.setUsername("new-name");
-        request.setPassword("new-password");
+        UserRegisterRequest request = new UserRegisterRequest("new-name", "new-email", "new-password");
 
         UserEntity userToSave = new UserEntity();
         userToSave.setUsername("new-name");
@@ -139,7 +137,7 @@ class UserServiceTest {
         when(userRepository.findByUsername("new-name")).thenReturn(Optional.empty());
         when(userMapper.userRegisterToUserEntity(request)).thenReturn(userToSave);
         when(bCryptPasswordEncoder.encode("new-password")).thenReturn("new-password-encoded");
-        when(userMapper.userToUserResponse(userToSave)).thenReturn(new UserResponse());
+        when(userMapper.userToUserResponse(userToSave)).thenReturn(new UserResponse(0L, "", "", Instant.now()));
         //then
         UserResponse userResponse = userService.saveUser(request);
         assertNotNull(userResponse);
@@ -154,8 +152,7 @@ class UserServiceTest {
     @Test
     void saveUser_whenUsernameExists_throwsAlreadyExistsException() {
         //given
-        UserRegisterRequest request = new UserRegisterRequest();
-        request.setUsername("john");
+        UserRegisterRequest request = new UserRegisterRequest("john", "", "new-password");
         //when
         when(userRepository.findByUsername("john")).thenReturn(Optional.of(new UserEntity()));
         //then
@@ -163,18 +160,12 @@ class UserServiceTest {
         verify(userRepository, never()).save(any(UserEntity.class));
     }
 
-
     @Test
     void updateUser_whenExists_updatesUsername_updatesEmail_savesAndReturnsUserResponse() {
         //given
-        UserUpdateRequest request = new UserUpdateRequest();
-        request.setUsername("new-name");
-        request.setEmail("new-email");
-
+        UserUpdateRequest request = new UserUpdateRequest("new-name", "new-email");
         //when
-        UserResponse mapped = new UserResponse();
-        mapped.setUsername("new-username");
-        mapped.setEmail("new-email");
+        UserResponse mapped = new UserResponse(0L,"new-username","new-email", Instant.now());
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userMapper.userToUserResponse(user)).thenReturn(mapped);
@@ -182,18 +173,15 @@ class UserServiceTest {
         UserResponse result = userService.updateUser(1L, request);
         //then
         assertSame(mapped, result);
-        assertEquals("new-username", mapped.getUsername());
-        assertEquals("new-email", mapped.getEmail());
+        assertEquals("new-username", mapped.username());
+        assertEquals("new-email", mapped.email());
         verify(userRepository).save(user);
     }
-
 
     @Test
     void updatePassword_whenMatches_encodesAndSaves() {
         //given
-        Password password = new Password();
-        password.setOldPassword("encoded-old");
-        password.setNewPassword("encoded-new");
+        Password password = new Password("encoded-old", "new-password-encoded");
         //when
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(bCryptPasswordEncoder.matches(user.getPassword(), "encoded-old")).thenReturn(true);
@@ -207,13 +195,9 @@ class UserServiceTest {
 
     @Test
     void updatePassword_whenOldMismatch_throwsPasswordDontMatchException() {
-        Password password = new Password();
-        password.setOldPassword("request-wrong-old");
-        password.setNewPassword("encoded-new");
-
+        Password password = new Password("request-wrond-old", "new-password-encoded");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(bCryptPasswordEncoder.matches("request-wrong-old", "encoded-old")).thenReturn(false);
-
 
         assertThrows(PasswordsDontMatchException.class, () -> userService.updatePassword(1L, password));
         verify(userRepository, never()).save(any(UserEntity.class));
@@ -224,7 +208,6 @@ class UserServiceTest {
         userService.deleteUser(1L);
         verify(userRepository).deleteById(1L);
     }
-
 
     @Test
     void deleteUserByUsername_found_invokesRepository() {

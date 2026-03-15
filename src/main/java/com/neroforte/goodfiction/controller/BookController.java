@@ -1,50 +1,35 @@
 package com.neroforte.goodfiction.controller;
 
 import com.neroforte.goodfiction.DTO.BookResponse;
-import com.neroforte.goodfiction.DTO.OpenLibraryBookDoc;
-import com.neroforte.goodfiction.DTO.OpenLibraryWork;
+import com.neroforte.goodfiction.entity.BookEntity;
 import com.neroforte.goodfiction.service.BookService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.AllArgsConstructor;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/books")
-@AllArgsConstructor
-@ApiController
+@RequestMapping("/api/books")
+@RequiredArgsConstructor
 public class BookController {
+
     private final BookService bookService;
 
-    @Tag(name = "get book", description = "get a book from DB or OpenLibrary API by title or it's author's name ")
-    @GetMapping("/title/{title}")
-    public List<BookResponse> findBooksByTitle(@PathVariable String title, @RequestParam(required = false, defaultValue = "3") int limit) {
-        return bookService.findOrFetchBookByTitle(title, limit);
-    }
-    @Tag(name = "get book", description = "get a book from DB or OpenLibrary API by title or it's author's name ")
-    @GetMapping("/author/{author_name}")
-    public List<BookResponse> findBooksByAuthorName(@PathVariable String author_name , @RequestParam(required = false, defaultValue = "3")int limit) {
-        return bookService.findOrFetchBookByAuthorName(author_name, limit);
+    @GetMapping("/search")
+    public ResponseEntity<List<BookResponse>> searchBooks(@RequestParam String query) {
+        return ResponseEntity.ok(bookService.searchAndPersist(query));
     }
 
-
-    @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public BookResponse createBook(@RequestBody OpenLibraryWork openLibraryWork) {
-        return bookService.createBook(openLibraryWork);
+    @GetMapping("/search/author")
+    public ResponseEntity<List<BookResponse>> searchByAuthor(@RequestParam String name) {
+        return ResponseEntity.ok(bookService.searchByAuthor(name));
     }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
-        bookService.deleteBook(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Book deleted successfully");
-    }
-
+//
+//    // When the user clicks "Add to my list", the frontend sends the Google ID.
+//    // We then fetch the full details, save it to our DB, and return the saved entity.
+//    @PostMapping("/import/{googleId}")
+//    public ResponseEntity<BookEntity> importBook(@PathVariable String googleId) {
+//        return ResponseEntity.ok(bookService.findOrCreateBook(googleId));
+//    }
 }

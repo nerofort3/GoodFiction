@@ -14,10 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 public interface UserBookListMapper {
 
 
-    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "googleId", source = "book.googleId")
     @Mapping(target = "bookTitle", source = "book.title")
-    @Mapping(target = "userId", source = "user.id")
-    @Mapping(target = "bookId", source = "book.id")
-    UserBookListItemResponse userBookListToUserBookListItemResponse(UserBookListItem userBookListItem);
+    @Mapping(target = "username", source = "user.username")
+    UserBookListItemResponse userBookListToUserBookListItemResponse(UserBookListItem item);
 
 }

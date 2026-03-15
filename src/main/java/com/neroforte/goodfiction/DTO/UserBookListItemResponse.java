@@ -1,30 +1,18 @@
 package com.neroforte.goodfiction.DTO;
 
-import com.neroforte.goodfiction.BookStatus;
-import com.neroforte.goodfiction.entity.UserBookListItem;
+import com.neroforte.goodfiction.entity.BookStatus;
 import lombok.Builder;
-import lombok.Data;
 
-@Data
 @Builder
-public class UserBookListItemResponse {
-
-    private Long id;
-
-    private Long userId;
-
-    private Long bookId;
-
-    private String bookTitle;
-
-    private String username;
-
-    private BookStatus bookStatus;
-
-    private Integer userRating;
-
-    private Double finishedPercentage;
-
-    private String review;
-
+public record UserBookListItemResponse(
+        Long id,
+        Long userId,
+        String googleId,
+        String bookTitle,
+        String username,
+        BookStatus bookStatus,
+        Integer userRating,
+        double finishedPercentage,
+        String review
+) {
 }

@@ -2,7 +2,7 @@ package com.neroforte.goodfiction.controller;
 
 
 import com.neroforte.goodfiction.DTO.UserBookListItemResponse;
-import com.neroforte.goodfiction.UserDetailsImpl;
+import com.neroforte.goodfiction.config.UserDetailsImpl;
 import com.neroforte.goodfiction.service.UserBookListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,8 +21,6 @@ import java.util.Optional;
 public class UserBookListController {
 
     private final UserBookListService userBookListService;
-
-    //
 
     @GetMapping("byStatus")
     @PreAuthorize("isAuthenticated()")
@@ -46,16 +44,16 @@ public class UserBookListController {
     }
 
 
-    @PostMapping("/{bookId}")
+    @PostMapping("/{googleBookId}")
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse addBookToShelf(
             @RequestParam(required = false, defaultValue = "FINISHED") String status,
             @RequestParam(required = false, defaultValue = "0") int rating,
-            @PathVariable long bookId,
+            @PathVariable String googleBookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return userBookListService.addBookToShelf(status, bookId, userId, rating);
+        return userBookListService.addBookToShelf(status, googleBookId, userId, rating);
     }
 
     @PostMapping("/title/{title}")
@@ -71,40 +69,40 @@ public class UserBookListController {
     }
 
 
-    @PatchMapping("/{bookId}/update")
+    @PatchMapping("/{googleBookId}/update")
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse updateBook(
             @RequestParam(required = false) Optional<String> status,
             @RequestParam(required = false) Optional<Integer> rating,
             @RequestParam(required = false) Optional<Double> finishedPercentage,
-            @PathVariable long bookId,
+            @PathVariable String googleBookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return userBookListService.updateBook(status, finishedPercentage, rating, userId, bookId);
+        return userBookListService.updateBook(status, finishedPercentage, rating, userId, googleBookId);
 
     }
 
-    @PatchMapping("/{bookId}/review")
+    @PatchMapping("/{googleBookId}/review")
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse updateBookReview(
             @RequestParam(required = false) String review,
-            @PathVariable long bookId,
+            @PathVariable String googleBookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return userBookListService.updateReview(review, userId, bookId);
+        return userBookListService.updateReview(review, userId, googleBookId);
     }
 
 
-    @DeleteMapping("/{bookId}")
+    @DeleteMapping("/{googleBookId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteBook(
-            @PathVariable long bookId,
+            @PathVariable String googleBookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        userBookListService.deleteBook(userId, bookId);
+        userBookListService.deleteBook(userId, googleBookId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Book on shelf deleted successfully");
     }

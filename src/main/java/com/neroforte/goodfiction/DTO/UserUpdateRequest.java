@@ -1,14 +1,15 @@
 package com.neroforte.goodfiction.DTO;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class UserUpdateRequest {
+@Builder
+public record UserUpdateRequest(
 
-    @NotBlank
-    private String username;
+        @NotBlank
+        String username,
 
-    @NotBlank
-    private String email;
+        @NotBlank
+        String email
+) {
 }

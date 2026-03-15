@@ -2,17 +2,16 @@ package com.neroforte.goodfiction.repository;
 
 import com.neroforte.goodfiction.entity.BookEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
 
-    Optional <List<BookEntity>> findByTitleContainingIgnoreCase(String title);
+    // CHANGED: Old "findByOpenLibraryKey" is gone.
+    Optional<BookEntity> findByGoogleId(String googleId);
 
-    Optional <List<BookEntity>>  findByAuthorContainingIgnoreCase(String authorName);
-
-    Optional<BookEntity> findByIsbn(String isbn);
-
-    Optional<BookEntity> getBookEntityById(Long id);
+    // Useful to check before saving to avoid exceptions
+    boolean existsByGoogleId(String googleId);
 }

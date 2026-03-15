@@ -1,23 +1,17 @@
 package com.neroforte.goodfiction.DTO;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Builder
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserResponse {
-    private Long id;
+public record UserResponse(
+        Long id,
 
-    private String username;
+        String username,
 
-    private String email;
+        String email,
 
-    private LocalDateTime createdDate;
+        Instant createdDate
 
-}
+) {}

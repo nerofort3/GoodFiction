@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction;
+package com.neroforte.goodfiction.config;
 
 import com.neroforte.goodfiction.entity.UserEntity;
 import com.neroforte.goodfiction.repository.UserRepository;
@@ -15,7 +15,6 @@ import java.util.Optional;
 public class UserDetailServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
-
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

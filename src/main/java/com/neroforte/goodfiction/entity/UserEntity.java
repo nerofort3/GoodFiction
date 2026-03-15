@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,7 @@ public class UserEntity {
     private String roles;
 
     @Column
-    private LocalDateTime createdDate;
+    private Instant createdDate;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserBookListItem> bookListItems = new ArrayList<>();
@@ -44,7 +45,7 @@ public class UserEntity {
 
     @PrePersist
     private void autoSetCreatedDate(){
-        this.createdDate = LocalDateTime.now();
+        this.createdDate = Instant.now();
     }
 
 }

@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction;
+package com.neroforte.goodfiction.config;
 
 import com.neroforte.goodfiction.entity.UserEntity;
 import org.springframework.security.core.GrantedAuthority;

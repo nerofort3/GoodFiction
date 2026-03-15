@@ -1,11 +1,14 @@
 package com.neroforte.goodfiction.DTO;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
 
-@Data
-public class OpenLibrarySearchResponse {
-    private int numFound;
-    private List<OpenLibraryBookDoc> docs;
+@Builder
+public record OpenLibrarySearchResponse(
+
+        int numFound,
+        List<OpenLibraryBookDoc> docs
+) {
 }

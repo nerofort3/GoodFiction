@@ -1,4 +1,4 @@
-package com.neroforte.goodfiction.DTO;
+package com.neroforte.goodfiction.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 

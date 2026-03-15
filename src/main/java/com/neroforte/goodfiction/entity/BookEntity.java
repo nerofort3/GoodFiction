@@ -1,63 +1,49 @@
 package com.neroforte.goodfiction.entity;
 
-import com.neroforte.goodfiction.BookStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Entity
-@Data
+import java.util.ArrayList;
+import java.util.List;
+
+@Getter
+@Setter
 @Builder
-@Table(name = "books")
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "books")
 public class BookEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 300)
-    @NotBlank
+    @Column(unique = true, nullable = false)
+    private String googleId;
+
+    @Column(nullable = false)
     private String title;
 
-    @Column(length = 300)
-    @NotBlank
+    @Column(nullable = false)
     private String author;
 
-
-    @Column(unique = true,nullable = false)
-    @NotBlank
-    private String openLibraryKey;
-
-
-    @Column(length = 300)
-    private int cover_i;
-
-    @Column
-    @NotNull
-    private Integer firstPublishYear;
-
-    @Column(unique = true,nullable = false)
-    @NotBlank
+    @Column(unique = true)
     private String isbn;
 
+    @Column(length = 2000)
+    private String thumbnailUrl;
 
-    @Column
-    @NotNull
-    private double externalRating;
+    private String publishedDate;
 
     @Column(columnDefinition = "TEXT")
-    @NotBlank
     private String description;
 
+    private Integer pageCount;
 
-    /*private Rating rating;
-        TODO add average rating based on the this website`s users score
-    */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "book_categories", joinColumns = @JoinColumn(name = "book_id"))
+    @Column(name = "category")
+    @Builder.Default
+    private List<String> categories = new ArrayList<>();
 }
