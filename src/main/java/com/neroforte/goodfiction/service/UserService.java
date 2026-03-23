@@ -9,6 +9,7 @@ import com.neroforte.goodfiction.exception.NotFoundException;
 import com.neroforte.goodfiction.exception.PasswordsDontMatchException;
 import com.neroforte.goodfiction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -76,6 +78,14 @@ public class UserService {
             existingUser.setPassword(bCryptPasswordEncoder.encode(password.newPassword()));
             userRepository.save(existingUser);
         }
+    }
+
+    @Transactional(readOnly = false)
+    public void updatePasswordAdmin(Long id, Password password) {
+        UserEntity existingUser = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
+        existingUser.setPassword(bCryptPasswordEncoder.encode(password.newPassword()));
+        userRepository.save(existingUser);
+        log.info("Changed password for user {}, with new password {}", id, password.newPassword());
     }
 
     @Transactional

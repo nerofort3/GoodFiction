@@ -62,6 +62,14 @@ public class BookService {
     }
 
     @Transactional
+    public BookResponse getBookDetails(String googleId) {
+        log.info("Fetching details for book: {}", googleId);
+        // This leverages our existing logic: it fetches from DB, or if missing, from Google and saves it.
+        BookEntity entity = findOrCreateBook(googleId);
+        return googleBookMapper.toResponse(entity);
+    }
+
+    @Transactional
     public List<BookResponse> searchByAuthor(String authorName) {
         log.info("Searching books by author: {}", authorName);
 

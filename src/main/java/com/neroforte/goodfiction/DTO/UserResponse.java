@@ -12,6 +12,8 @@ public record UserResponse(
 
         String email,
 
-        Instant createdDate
+        Instant createdDate,
+
+        boolean isAdmin
 
 ) {}

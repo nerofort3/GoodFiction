@@ -22,7 +22,7 @@ public interface UserBookListRepository extends JpaRepository <UserBookListItem,
             SELECT ub FROM UserBookListItem ub
             LEFT JOIN FETCH ub.book
             WHERE ub.user.id = :userId
-            AND ub.userRating > 0""")
+            AND ub.userRating >= 0""")
     List<UserBookListItem> findBooksByUser(@Param("userId") Long userId);
 
     List<UserBookListItem> findByUserId(Long userId, Pageable pageable);

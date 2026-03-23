@@ -107,7 +107,8 @@ public class UserBookListService {
                                                Optional<Double> finishedPercentage,
                                                Optional<Integer> rating,
                                                long userId,
-                                               String googleId) {
+                                               String googleId,
+                                               Optional<String> review) {
 
         UserEntity user = userService.getUserEntityById(userId);
 
@@ -121,6 +122,7 @@ public class UserBookListService {
             status.ifPresent(string -> item.setBookStatus(BookStatus.valueOf(string.toUpperCase())));
 
             item.setFinishedPercentage(finishedPercentage.orElse(0.0));
+            item.setReview(review.orElse(""));
 
             if (item.getBookStatus().equals(BookStatus.FINISHED)) {
                 item.setFinishedPercentage(100.0);

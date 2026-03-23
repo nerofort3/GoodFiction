@@ -27,14 +27,12 @@ public class UserController {
 
 
     @GetMapping()
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public List<UserResponse> findAllUsers(@RequestParam(required = false , defaultValue = "10") int limit)  {
         return userService.getAllUsers(limit);
     }
 
     @Tag(name = "get user", description = "get a user from DB")
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public UserResponse findUserById(@PathVariable Long userId) {
         return userService.getUserById(userId);
     }
@@ -78,18 +76,26 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/password")
-    public ResponseEntity<?> updatePassword(@PathVariable Long userId, @Valid @RequestBody Password password) {
-        userService.updatePassword(userId, password);
+    public ResponseEntity<?> updatePassword(@PathVariable Long id, @Valid @RequestBody Password password) {
+        userService.updatePassword(id, password);
         return ResponseEntity.status(HttpStatus.OK).body("password updated successfully");
     }
 
+    @PatchMapping("/{id}/password-admin")
+    public ResponseEntity<?> updatePasswordAdmin(@PathVariable Long id, @Valid @RequestBody Password password) {
+        userService.updatePasswordAdmin(id, password);
+        return ResponseEntity.ok("");
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
-        userService.deleteUser(userId);
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully");
     }
 
     @DeleteMapping("/username/{username}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<?> deleteUserByUsername(@PathVariable String username) {
         userService.deleteUserByUsername(username);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully");

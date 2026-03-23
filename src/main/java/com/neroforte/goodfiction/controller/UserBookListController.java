@@ -73,14 +73,23 @@ public class UserBookListController {
     @PreAuthorize("isAuthenticated()")
     public UserBookListItemResponse updateBook(
             @RequestParam(required = false) Optional<String> status,
+            @RequestParam(required = false) Optional<String> review,
             @RequestParam(required = false) Optional<Integer> rating,
             @RequestParam(required = false) Optional<Double> finishedPercentage,
             @PathVariable String googleBookId,
             Authentication authentication
     ) {
         Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        return userBookListService.updateBook(status, finishedPercentage, rating, userId, googleBookId);
+        return userBookListService.updateBook(status, finishedPercentage, rating, userId, googleBookId, review);
 
+    }
+
+    @GetMapping("/user/{targetUserId}")
+    public ResponseEntity<List<UserBookListItemResponse>> getUserShelf(
+            @PathVariable Long targetUserId,
+            @RequestParam(defaultValue = "100") int limit) {
+
+        return ResponseEntity.ok(userBookListService.findAllBooks(limit, targetUserId));
     }
 
     @PatchMapping("/{googleBookId}/review")
