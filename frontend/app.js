@@ -1,6 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   GoodFiction — app.js  (Ukrainian UI + shelf edit button)
-   ═══════════════════════════════════════════════════════════ */
 
 const API_BASE = 'http://localhost:8080';
 
@@ -18,7 +15,6 @@ function clearSession() {
   sessionStorage.removeItem('gf_user');
 }
 
-// ── Central fetch ─────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
   const auth = getAuthHeader();
   if (!auth) throw new Error('Не авторизовано');
@@ -33,7 +29,7 @@ async function apiFetch(path, options = {}) {
   });
 
   if (!res.ok) {
-    const err = new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const err = new Error('Помилка сервера');
     err.status = res.status;
     throw err;
   }
@@ -42,7 +38,7 @@ async function apiFetch(path, options = {}) {
   try { return JSON.parse(text); } catch (_) { return text; } // handle plain-text responses
 }
 
-// ── UI helpers ────────────────────────────────────────────────
+
 function showLoginScreen() {
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appShell').style.display   = 'none';
@@ -70,6 +66,51 @@ function escapeHtml(s) {
                   .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── Toast notifications (replaces alert() calls) ──────────────────────────
+function showToast(message, type = 'danger') {
+  // Create container if it doesn't exist
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;';
+    document.body.appendChild(container);
+  }
+
+  const icons = { danger: 'bi-exclamation-circle-fill', warning: 'bi-exclamation-triangle-fill', success: 'bi-check-circle-fill' };
+  const colors = { danger: '#c0392b', warning: '#c8873a', success: '#27ae60' };
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background:#fff; border-left:4px solid ${colors[type] || colors.danger};
+    border-radius:4px; box-shadow:0 4px 16px rgba(0,0,0,.15);
+    padding:.75rem 1rem; font-size:.88rem; max-width:320px;
+    display:flex; align-items:flex-start; gap:.6rem;
+    animation:slideIn .2s ease;
+  `;
+  toast.innerHTML = `
+    <i class="bi ${icons[type] || icons.danger}" style="color:${colors[type] || colors.danger};margin-top:1px;flex-shrink:0;"></i>
+    <span>${escapeHtml(message)}</span>
+  `;
+
+  container.appendChild(toast);
+
+  // Add keyframe animation once
+  if (!document.getElementById('toastStyle')) {
+    const style = document.createElement('style');
+    style.id = 'toastStyle';
+    style.textContent = '@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}';
+    document.head.appendChild(style);
+  }
+
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity .3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 function renderStars(rating) {
   if (!rating) return '<span class="text-muted small">Без оцінки</span>';
   return Array.from({length:5}, (_,i) =>
@@ -77,7 +118,6 @@ function renderStars(rating) {
   ).join('');
 }
 
-// ── Navigation ────────────────────────────────────────────────
 const PAGES = {
   home:            'pageHome',
   search:          'pageSearch',
@@ -104,7 +144,7 @@ function onPageLoad(key) {
   if (key === 'recommendations') resetRecsUI();
 }
 
-// ── Login ─────────────────────────────────────────────────────
+
 async function attemptLogin(username, password) {
   setLoginLoading(true);
   hideLoginError();
@@ -123,13 +163,10 @@ async function attemptLogin(username, password) {
     else if (err.message.includes('Failed to fetch'))
       showLoginError('Не вдається підключитися до сервера. Чи запущено бекенд на порту 8080?');
     else
-      showLoginError(`Несподівана помилка: ${err.message}`);
+      showLoginError('Щось пішло не так. Спробуйте ще раз.');
   } finally { setLoginLoading(false); }
 }
 
-// ══════════════════════════════════════════════════════════════
-// SEARCH
-// ══════════════════════════════════════════════════════════════
 async function searchBooks() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
@@ -139,7 +176,7 @@ async function searchBooks() {
     const books = await apiFetch(`/api/books/search?query=${encodeURIComponent(q)}`);
     renderBookGrid(books, c, true);
   } catch (err) {
-    c.innerHTML = `<div class="col-12"><div class="alert alert-danger">Помилка пошуку: ${err.message}</div></div>`;
+    c.innerHTML = '<div class="col-12"><div class="alert alert-danger">Не вдалося виконати пошук. Спробуйте ще раз.</div></div>';
   }
 }
 
@@ -168,9 +205,6 @@ function renderBookGrid(books, container, showAddBtn) {
     </div>`).join('');
 }
 
-// ══════════════════════════════════════════════════════════════
-// BOOK DETAIL MODAL  GET /api/books/{googleId}
-// ══════════════════════════════════════════════════════════════
 async function openBookDetail(googleId) {
   const body   = document.getElementById('bookDetailBody');
   const addBtn = document.getElementById('btnDetailAddToShelf');
@@ -188,7 +222,7 @@ async function openBookDetail(googleId) {
       openAddModal(b.googleId, b.title);
     };
   } catch (err) {
-    body.innerHTML = `<div class="alert alert-danger">Не вдалося завантажити деталі книги: ${err.message}</div>`;
+    body.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити інформацію про книгу. Спробуйте ще раз.</div>';
   }
 }
 
@@ -222,9 +256,6 @@ function renderBookDetail(b) {
     </div>`;
 }
 
-// ══════════════════════════════════════════════════════════════
-// ADD TO SHELF  POST /api/v1/shelves/{googleBookId}
-// ══════════════════════════════════════════════════════════════
 let _pendingGoogleId = null;
 
 function openAddModal(googleId, title) {
@@ -263,16 +294,13 @@ async function confirmAddToShelf() {
     const el = document.getElementById('addModalError');
     el.textContent   = err.status === 409
       ? 'Ця книга вже є на вашій полиці.'
-      : `Помилка: ${err.message}`;
+      : 'Не вдалося додати книгу. Спробуйте ще раз.';
     el.style.display = 'block';
     btn.disabled  = false;
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Додати на полицю';
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// MY SHELF  GET /api/v1/shelves
-// ══════════════════════════════════════════════════════════════
 async function loadShelf() {
   const c = document.getElementById('shelfContent');
   c.innerHTML = `<div class="text-center py-5"><div class="spinner-border"></div></div>`;
@@ -280,7 +308,7 @@ async function loadShelf() {
     const books = await apiFetch('/api/v1/shelves?limit=100');
     renderShelf(books, c, true);
   } catch (err) {
-    c.innerHTML = `<div class="alert alert-danger">Не вдалося завантажити полицю: ${err.message}</div>`;
+    c.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити полицю. Спробуйте оновити сторінку.</div>';
   }
 }
 
@@ -380,7 +408,6 @@ function shelfCard(b, isOwn) {
     </div>`;
 }
 
-// Fetch thumbnail for a shelf card and swap placeholder → <img>
 async function fetchShelfThumb(googleId, placeholderId) {
   try {
     const b   = await apiFetch(`/api/books/${encodeURIComponent(googleId)}`);
@@ -399,7 +426,6 @@ async function fetchShelfThumb(googleId, placeholderId) {
   }
 }
 
-// ── Delete ────────────────────────────────────────────────────
 async function deleteFromShelf(googleId, title, btn) {
   if (!confirm(`Видалити «${title}» з вашої полиці?`)) return;
   btn.disabled  = true;
@@ -408,13 +434,12 @@ async function deleteFromShelf(googleId, title, btn) {
     await apiFetch(`/api/v1/shelves/${encodeURIComponent(googleId)}`, { method: 'DELETE' });
     loadShelf();
   } catch (err) {
-    alert(`Помилка видалення: ${err.message}`);
+    showToast('Не вдалося видалити книгу. Спробуйте ще раз.', 'danger');
     btn.disabled  = false;
     btn.innerHTML = '<i class="bi bi-trash me-1"></i>Видалити';
   }
 }
 
-// ── Update ────────────────────────────────────────────────────
 let _updateGoogleId = null;
 
 function openUpdateModal(googleId, title, rating, status, pct, review) {
@@ -454,18 +479,13 @@ async function confirmUpdate() {
     bootstrap.Modal.getInstance(document.getElementById('updateShelfModal')).hide();
     loadShelf();
   } catch (err) {
-    document.getElementById('updateModalError').textContent = `Помилка оновлення: ${err.message}`;
+    document.getElementById('updateModalError').textContent = 'Не вдалося зберегти зміни. Спробуйте ще раз.';
     document.getElementById('updateModalError').style.display = 'block';
     btn.disabled  = false;
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Зберегти зміни';
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// AI RECOMMENDATIONS
-// GET  /api/v1/recommendations
-// POST /api/v1/recommendations/custom  { prompt }
-// ══════════════════════════════════════════════════════════════
 function resetRecsUI() {
   document.getElementById('recsResults').innerHTML  = '';
   document.getElementById('recsLoading').style.display = 'none';
@@ -489,7 +509,7 @@ async function fetchRecommendations(customPrompt) {
     }
     renderRecommendations(data);
   } catch (err) {
-    results.innerHTML = `<div class="col-12"><div class="alert alert-danger">Не вдалося отримати поради: ${err.message}</div></div>`;
+    results.innerHTML = '<div class="col-12"><div class="alert alert-danger">Не вдалося отримати рекомендації. Переконайтеся, що на вашій полиці є книги, та спробуйте ще раз.</div></div>';
   } finally {
     loading.style.display = 'none';
   }
@@ -528,15 +548,12 @@ async function searchAndAdd(title, author) {
     const list  = Array.isArray(books) ? books : [];
     const match = list.find(b => b.title.toLowerCase() === title.toLowerCase()) || list[0];
     if (match) openAddModal(match.googleId, match.title);
-    else alert(`Не вдалося знайти «${title}» у базі книг. Спробуйте пошук вручну.`);
+    else showToast('Книгу не знайдено в базі. Спробуйте пошук вручну.', 'warning');
   } catch (err) {
-    alert(`Помилка пошуку: ${err.message}`);
+    showToast('Не вдалося виконати пошук. Спробуйте ще раз.', 'danger');
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// COMMUNITY  GET /api/v1/users + GET /api/v1/shelves/user/{id}
-// ══════════════════════════════════════════════════════════════
 async function loadCommunity() {
   const usersList = document.getElementById('usersList');
   const shelfDiv  = document.getElementById('communityShelfContent');
@@ -547,7 +564,7 @@ async function loadCommunity() {
     const users = await apiFetch('/api/v1/users?limit=50');
     renderUsersList(users);
   } catch (err) {
-    usersList.innerHTML = `<div class="alert alert-danger">Не вдалося завантажити користувачів: ${err.message}</div>`;
+    usersList.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити список користувачів. Спробуйте ще раз.</div>';
   }
 }
 
@@ -590,11 +607,10 @@ async function loadUserShelf(userId, username, pillEl) {
       </h5>`;
     c.appendChild(shelfBody);
   } catch (err) {
-    c.innerHTML += `<div class="alert alert-danger mt-2">Не вдалося завантажити полицю: ${err.message}</div>`;
+    c.innerHTML += '<div class="alert alert-danger mt-2">Не вдалося завантажити полицю цього користувача. Спробуйте ще раз.</div>';
   }
 }
 
-// Ukrainian plural for "книга"
 function pluralBooks(n) {
   if (n % 10 === 1 && n % 100 !== 11) return 'книга';
   if ([2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100)) return 'книги';
@@ -602,11 +618,6 @@ function pluralBooks(n) {
 }
 
 
-// ══════════════════════════════════════════════════════════════
-// PROFILE  —  own profile, password change, admin panel
-// ══════════════════════════════════════════════════════════════
-
-// Cache own user data so we don't re-fetch on every tab switch
 let _myProfile = null;
 
 async function loadProfile() {
@@ -628,7 +639,7 @@ async function loadProfile() {
     checkAdminAndLoad(_myProfile);
   } catch (err) {
     document.getElementById('profileInfo').innerHTML =
-      `<div class="alert alert-danger">Не вдалося завантажити профіль: ${err.message}</div>`;
+'<div class="alert alert-danger">Не вдалося завантажити профіль. Спробуйте оновити сторінку.</div>';
   }
 }
 
@@ -680,7 +691,6 @@ function showAdminPanel(users, myUser) {
   deleteSelect.innerHTML   = '<option value="">— Оберіть користувача —</option>' + optionsExcludingSelf;
 }
 
-// ── Save own profile ──────────────────────────────────────────
 async function saveProfile() {
   const username = document.getElementById('editUsername').value.trim();
   const email    = document.getElementById('editEmail').value.trim();
@@ -714,7 +724,7 @@ async function saveProfile() {
     }
     okEl.style.display = 'block';
   } catch (err) {
-    errEl.textContent   = `Помилка: ${err.message}`;
+    errEl.textContent   = 'Не вдалося зберегти зміни. Спробуйте ще раз.';
     errEl.style.display = 'block';
   } finally {
     btn.disabled  = false;
@@ -722,7 +732,6 @@ async function saveProfile() {
   }
 }
 
-// ── Change own password ───────────────────────────────────────
 async function changeOwnPassword() {
   const oldPw  = document.getElementById('oldPassword').value;
   const newPw  = document.getElementById('newPassword').value;
@@ -764,7 +773,7 @@ async function changeOwnPassword() {
   } catch (err) {
     errEl.textContent = err.status === 400
       ? 'Поточний пароль введено невірно.'
-      : `Помилка: ${err.message}`;
+      : 'Не вдалося змінити пароль. Спробуйте ще раз.';
     errEl.style.display = 'block';
   } finally {
     btn.disabled  = false;
@@ -772,7 +781,6 @@ async function changeOwnPassword() {
   }
 }
 
-// ── Admin: change any user's password ────────────────────────
 async function adminChangePassword() {
   const userId  = document.getElementById('adminUserSelect').value;
   const newPw   = document.getElementById('adminNewPassword').value;
@@ -817,7 +825,7 @@ async function adminChangePassword() {
     document.getElementById('adminNewPassword').value     = '';
     document.getElementById('adminConfirmPassword').value = '';
   } catch (err) {
-    errEl.textContent   = `Помилка: ${err.message}`;
+    errEl.textContent   = 'Не вдалося зберегти зміни. Спробуйте ще раз.';
     errEl.style.display = 'block';
   } finally {
     btn.disabled  = false;
@@ -825,9 +833,6 @@ async function adminChangePassword() {
   }
 }
 
-// ── Admin: delete user ────────────────────────────────────────
-
-// Holds the pending delete target while the confirmation modal is open
 let _deleteUserId   = null;
 let _deleteUserName = null;
 
@@ -842,7 +847,6 @@ function adminDeleteUser() {
     errEl.style.display = 'block'; return;
   }
 
-  // Store pending target and show custom confirmation modal
   _deleteUserId   = userId;
   _deleteUserName = selEl.options[selEl.selectedIndex].text;
   document.getElementById('confirmDeleteUsername').textContent = _deleteUserName;
@@ -855,7 +859,6 @@ async function executeDeleteUser() {
   const errEl = document.getElementById('adminDeleteError');
   const confirmBtn = document.getElementById('btnConfirmDeleteUser');
 
-  // Close the confirmation modal
   bootstrap.Modal.getInstance(
     document.getElementById('confirmDeleteModal')
   ).hide();
@@ -873,19 +876,13 @@ async function executeDeleteUser() {
     deleteBtn.innerHTML = '<i class="bi bi-person-x me-1"></i> Видалити користувача';
     loadProfile(); // refresh user lists
   } catch (err) {
-    errEl.textContent   = `Помилка: ${err.message}`;
+    errEl.textContent   = 'Не вдалося зберегти зміни. Спробуйте ще раз.';
     errEl.style.display = 'block';
     deleteBtn.disabled  = false;
     deleteBtn.innerHTML = '<i class="bi bi-person-x me-1"></i> Видалити користувача';
   }
 }
 
-
-// ══════════════════════════════════════════════════════════════
-// REGISTRATION  POST /api/v1/users
-// ══════════════════════════════════════════════════════════════
-
-// Password must match: 8-32 chars, upper, lower, digit, special char
 const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()\_+\-=\[\]{};':"\\|,.<>\/?]).{8,32}$/;
 
 function showRegisterCard() {
@@ -968,17 +965,14 @@ async function attemptRegister() {
     showRegisterSuccess();
   } catch (err) {
     if (err.message.includes('Failed to fetch'))
-      showRegisterError('Не вдається підключитися до сервера.');
+      showRegisterError('Не вдається підключитися до сервера. Перевірте зʼєднання.');
     else
-      showRegisterError(err.message);
+      showRegisterError('Не вдалося створити акаунт. Можливо, це імʼя користувача вже зайнято.');
   } finally {
     setRegisterLoading(false);
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// EVENT LISTENERS
-// ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
 
   // Toggle login ↔ register
@@ -1036,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Recommendations — custom prompt
   document.getElementById('btnCustomRecs').addEventListener('click', () => {
     const prompt = document.getElementById('customPromptInput').value.trim();
-    if (!prompt) { alert('Будь ласка, введіть власний запит.'); return; }
+    if (!prompt) { showToast('Будь ласка, введіть власний запит перед відправкою.', 'warning'); return; }
     fetchRecommendations(prompt);
   });
 
@@ -1059,7 +1053,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Admin — confirm delete inside modal
   document.getElementById('btnConfirmDeleteUser').addEventListener('click', executeDeleteUser);
 
-  // Session restore
   if (getAuthHeader()) showAppShell();
   else                 showLoginScreen();
 });
