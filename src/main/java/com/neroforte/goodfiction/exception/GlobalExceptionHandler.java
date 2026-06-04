@@ -31,4 +31,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    @ExceptionHandler(PrivateProfileException.class)
+    public ResponseEntity<?> handlePrivateProfileException(PrivateProfileException ex, HttpServletRequest request){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    }
+
 }

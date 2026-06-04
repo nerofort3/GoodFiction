@@ -14,6 +14,8 @@ public record UserResponse(
 
         Instant createdDate,
 
+        boolean isProfilePublic,
+
         boolean isAdmin
 
 ) {}

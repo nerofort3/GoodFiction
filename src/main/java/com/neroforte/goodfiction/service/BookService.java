@@ -49,11 +49,15 @@ public class BookService {
     @Transactional
     public List<BookEntity> searchByTitle(String title) {
         log.info("Searching books by title: {}", title);
-        // Google Books API supports specific field searches using "intitle:"
+        // Google Books API дозволяє робити пошук по назві використовуючи "intitle:"
         List<GoogleBooksResponse.Item> googleItems = fetchFromGoogle("intitle:" + title);
 
         if (googleItems.isEmpty()) {
-            return Collections.emptyList();
+            log.info("Strict title search returned 0 results, trying fallback search for: {}", title);
+            googleItems = fetchFromGoogle(title);
+            if (googleItems.isEmpty()) {
+                return Collections.emptyList();
+            }
         }
 
         return googleItems.stream()
@@ -64,7 +68,7 @@ public class BookService {
     @Transactional
     public BookResponse getBookDetails(String googleId) {
         log.info("Fetching details for book: {}", googleId);
-        // This leverages our existing logic: it fetches from DB, or if missing, from Google and saves it.
+        // Робить запит у бд. Якщо деталі відсутні - запит йде в Google Books API
         BookEntity entity = findOrCreateBook(googleId);
         return googleBookMapper.toResponse(entity);
     }
@@ -76,7 +80,11 @@ public class BookService {
         List<GoogleBooksResponse.Item> googleItems = fetchFromGoogle("inauthor:" + authorName);
 
         if (googleItems.isEmpty()) {
-            return Collections.emptyList();
+            log.info("Strict author search returned 0 results, trying fallback search for: {}", authorName);
+            googleItems = fetchFromGoogle(authorName);
+            if (googleItems.isEmpty()) {
+                return Collections.emptyList();
+            }
         }
 
         return googleItems.stream()
@@ -95,31 +103,101 @@ public class BookService {
     }
 
     private List<GoogleBooksResponse.Item> fetchFromGoogle(String query) {
-        try {
-            String modifiedQuery = query + "+subject:fiction";
+        String optimized = optimizeQuery(query);
+        List<GoogleBooksResponse.Item> results = executeGoogleSearch(optimized);
 
+        if (results.isEmpty() && !optimized.equals(query)) {
+            log.info("Optimized query [{}] returned 0 results, falling back to original query: {}", optimized, query);
+            results = executeGoogleSearch(query);
+        }
+        return results;
+    }
+
+    private String optimizeQuery(String query) {
+        String trimmed = query.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+
+        // 1. ISBN check
+        String cleanQuery = trimmed.replaceAll("[\\s-]", "");
+        if (cleanQuery.matches("\\d{10}") || cleanQuery.matches("\\d{13}")) {
+            return "isbn:" + cleanQuery;
+        }
+
+        // 2. Handle "by" separator: e.g. "Title by Author"
+        if (trimmed.toLowerCase().contains(" by ")) {
+            int index = trimmed.toLowerCase().indexOf(" by ");
+            String titlePart = trimmed.substring(0, index).trim();
+            String authorPart = trimmed.substring(index + 4).trim();
+            if (!titlePart.isEmpty() && !authorPart.isEmpty()) {
+                return String.format("(intitle:(%s) inauthor:(%s))", titlePart, authorPart);
+            }
+        }
+
+        // 3. Handle " - " separator: e.g. "Author - Title" or "Title - Author"
+        if (trimmed.contains(" - ") || trimmed.contains(" – ")) {
+            String separator = trimmed.contains(" - ") ? " - " : " – ";
+            int index = trimmed.indexOf(separator);
+            String part1 = trimmed.substring(0, index).trim();
+            String part2 = trimmed.substring(index + separator.length()).trim();
+            if (!part1.isEmpty() && !part2.isEmpty()) {
+                return String.format("(intitle:(%s) inauthor:(%s)) OR (intitle:(%s) inauthor:(%s))",
+                        part1, part2, part2, part1);
+            }
+        }
+
+        // 4. Handle ":" separator: e.g. "Author: Title"
+        if (trimmed.contains(": ")) {
+            int index = trimmed.indexOf(": ");
+            String part1 = trimmed.substring(0, index).trim();
+            String part2 = trimmed.substring(index + 2).trim();
+            if (!part1.isEmpty() && !part2.isEmpty()) {
+                return String.format("(intitle:(%s) inauthor:(%s)) OR (intitle:(%s) inauthor:(%s))",
+                        part1, part2, part2, part1);
+            }
+        }
+
+        return trimmed;
+    }
+
+    private List<GoogleBooksResponse.Item> executeGoogleSearch(String query) {
+        try {
             GoogleBooksResponse response = restClient.get()
-                    .uri(baseUrl + "?q={q}&langRestrict=en&maxResults=10&key={key}",
-                            modifiedQuery, apiKey)
+                    .uri(baseUrl + "?q={q}&maxResults=40&key={key}",
+                            query, apiKey)
                     .retrieve()
                     .body(GoogleBooksResponse.class);
 
-            return response.items().stream()
+            if (response == null || response.items() == null) {
+                return Collections.emptyList();
+            }
+
+            List<GoogleBooksResponse.Item> items = response.items();
+
+            return items.stream()
                     .filter(item -> {
+                        if (item.volumeInfo() == null) return false;
                         String lang = item.volumeInfo().language();
                         return lang == null || !"ru".equalsIgnoreCase(lang);
                     })
                     .sorted((book1, book2) -> {
-                        // PRIORITIZE UKRAINIAN BOOKS
-                        String lang1 = book1.volumeInfo().language();
-                        String lang2 = book2.volumeInfo().language();
+                        int idx1 = items.indexOf(book1);
+                        int idx2 = items.indexOf(book2);
 
-                        boolean isUk1 = "uk".equalsIgnoreCase(lang1);
-                        boolean isUk2 = "uk".equalsIgnoreCase(lang2);
+                        // Base relevance score based on Google's original position (decreasing score)
+                        double score1 = 100.0 - 2.5 * idx1;
+                        double score2 = 100.0 - 2.5 * idx2;
 
-                        if (isUk1 && !isUk2) return -1;
-                        if (!isUk1 && isUk2) return 1;
-                        return 0;
+                        // Add language boost for Ukrainian results (up to 10 positions boost)
+                        if ("uk".equalsIgnoreCase(book1.volumeInfo().language())) {
+                            score1 += 25.0;
+                        }
+                        if ("uk".equalsIgnoreCase(book2.volumeInfo().language())) {
+                            score2 += 25.0;
+                        }
+
+                        return Double.compare(score2, score1);
                     })
                     .limit(25)
                     .toList();
@@ -129,7 +207,7 @@ public class BookService {
         }
     }
 
-    private BookEntity fetchFromGoogleByIdAndSave(String googleId) {
+    private BookEntity fetchFromGoogleByIdAndSave(String googleId) { // шукаємо та зберігаємо книгу
         log.info("Fetching details for Google ID: {}", googleId);
         try {
             GoogleBooksResponse.Item item = restClient.get()

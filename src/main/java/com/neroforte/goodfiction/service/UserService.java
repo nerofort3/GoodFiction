@@ -80,6 +80,15 @@ public class UserService {
         }
     }
 
+    @Transactional
+    public UserResponse togglePrivate(Long id, boolean isPublic) throws EmptyResultDataAccessException {
+        UserEntity existingUser = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such id not found: " + id));
+        existingUser.setProfilePublic(isPublic);
+        userRepository.save(existingUser);
+        log.info("Changed profile privacy to public: {}", isPublic);
+        return userMapper.userToUserResponse(existingUser);
+    }
+
     @Transactional(readOnly = false)
     public void updatePasswordAdmin(Long id, Password password) {
         UserEntity existingUser = userRepository.findById(id).orElseThrow(() -> new NotFoundException("user with such id not found: " + id));

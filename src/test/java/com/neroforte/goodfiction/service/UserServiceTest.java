@@ -65,7 +65,7 @@ class UserServiceTest {
     void getUserById_found_returnsMappedResponse() {
         //given
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        UserResponse response = new UserResponse(1L,"", "", Instant.now());
+        UserResponse response = new UserResponse(1L,"", "", Instant.now(), true, false);
         when(userMapper.userToUserResponse(user)).thenReturn(response);
         //when
         UserResponse actualResponse = userService.getUserById(1L);
@@ -106,7 +106,7 @@ class UserServiceTest {
         //given
         when(userRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(new UserEntity(), new UserEntity())));
-        when(userMapper.userToUserResponse(any(UserEntity.class))).thenReturn(new UserResponse(0L, "", "", Instant.now()));
+        when(userMapper.userToUserResponse(any(UserEntity.class))).thenReturn(new UserResponse(0L, "", "", Instant.now(), true, false));
         //when
         var list = userService.getAllUsers(2);
         //then
@@ -137,7 +137,7 @@ class UserServiceTest {
         when(userRepository.findByUsername("new-name")).thenReturn(Optional.empty());
         when(userMapper.userRegisterToUserEntity(request)).thenReturn(userToSave);
         when(bCryptPasswordEncoder.encode("new-password")).thenReturn("new-password-encoded");
-        when(userMapper.userToUserResponse(userToSave)).thenReturn(new UserResponse(0L, "", "", Instant.now()));
+        when(userMapper.userToUserResponse(userToSave)).thenReturn(new UserResponse(0L, "", "", Instant.now(), true, false));
         //then
         UserResponse userResponse = userService.saveUser(request);
         assertNotNull(userResponse);
@@ -165,7 +165,7 @@ class UserServiceTest {
         //given
         UserUpdateRequest request = new UserUpdateRequest("new-name", "new-email");
         //when
-        UserResponse mapped = new UserResponse(0L,"new-username","new-email", Instant.now());
+        UserResponse mapped = new UserResponse(0L,"new-username","new-email", Instant.now(), true, false);
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userMapper.userToUserResponse(user)).thenReturn(mapped);
@@ -181,7 +181,7 @@ class UserServiceTest {
     @Test
     void updatePassword_whenMatches_encodesAndSaves() {
         //given
-        Password password = new Password("encoded-old", "new-password-encoded");
+        Password password = new Password("encoded-old", "encoded-new");
         //when
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(bCryptPasswordEncoder.matches(user.getPassword(), "encoded-old")).thenReturn(true);
@@ -195,7 +195,7 @@ class UserServiceTest {
 
     @Test
     void updatePassword_whenOldMismatch_throwsPasswordDontMatchException() {
-        Password password = new Password("request-wrond-old", "new-password-encoded");
+        Password password = new Password("request-wrong-old", "new-password-encoded");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(bCryptPasswordEncoder.matches("request-wrong-old", "encoded-old")).thenReturn(false);
 

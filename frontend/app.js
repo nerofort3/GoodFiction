@@ -150,7 +150,7 @@ async function attemptLogin(username, password) {
   hideLoginError();
   saveSession(username, password);
   try {
-    const res = await fetch(`${API_BASE}/api/books/search?query=test`, {
+    const res = await fetch(`${API_BASE}/api/v1/users/me`, {
       headers: { 'Authorization': getAuthHeader() }
     });
     if (res.status === 401) throw Object.assign(new Error(), { status: 401 });
@@ -418,11 +418,10 @@ async function fetchShelfThumb(googleId, placeholderId) {
       img.src       = b.thumbnailUrl;
       img.alt       = b.title || '';
       img.className = 'shelf-card-thumb';
-      img.onerror   = () => { /* keep placeholder look if img fails */ };
+      img.onerror   = () => {};
       el.replaceWith(img);
     }
   } catch (_) {
-    // Silently ignore — placeholder stays
   }
 }
 
@@ -554,28 +553,148 @@ async function searchAndAdd(title, author) {
   }
 }
 
+let _communityUsers = [];
+
 async function loadCommunity() {
   const usersList = document.getElementById('usersList');
   const shelfDiv  = document.getElementById('communityShelfContent');
+  const feedList  = document.getElementById('communityFeedList');
+  
   usersList.innerHTML = `<div class="spinner-border spinner-border-sm"></div>`;
   shelfDiv.innerHTML  = '';
+  if (feedList) feedList.innerHTML = `<div class="text-center py-4"><div class="spinner-border"></div></div>`;
 
   try {
-    const users = await apiFetch('/api/v1/users?limit=50');
-    renderUsersList(users);
+    _communityUsers = await apiFetch('/api/v1/users?limit=100');
+    renderUsersList(_communityUsers);
+    loadCommunityFeed();
   } catch (err) {
     usersList.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити список користувачів. Спробуйте ще раз.</div>';
+    if (feedList) feedList.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити стрічку подій.</div>';
+  }
+}
+
+async function loadCommunityFeed() {
+  const feedList = document.getElementById('communityFeedList');
+  if (!feedList) return;
+  try {
+    const feed = await apiFetch('/api/community/feed?limit=15');
+    renderCommunityFeed(feed);
+  } catch (err) {
+    feedList.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити стрічку подій.</div>';
+  }
+}
+
+const ACTIVITY_LABELS = {
+  UPDATED_BOOK: 'оновив(ла) прогрес читання',
+  STARTED_READING: 'почав(ла) читати',
+  FINISHED_READING: 'прочитав(ла)',
+  WROTE_REVIEW: 'залишив(ла) відгук про',
+  ADDED_TO_WANT_TO_READ: 'додав(ла) в плани',
+  RATED_BOOK: 'оцінив(ла) книгу'
+};
+
+function renderCommunityFeed(feed) {
+  const feedList = document.getElementById('communityFeedList');
+  if (!feed || !feed.length) {
+    feedList.innerHTML = '<div class="text-center text-muted py-5">Немає недавніх подій.</div>';
+    return;
+  }
+
+  const me = getStoredUsername();
+
+  feedList.innerHTML = feed.map(item => {
+    const user = _communityUsers.find(u => u.id === item.userId);
+    const username = user ? escapeHtml(user.username) : `Користувач #${item.userId}`;
+    const isMe = user && user.username === me;
+    const displayName = isMe ? 'Ви' : username;
+    const label = ACTIVITY_LABELS[item.activityType] || 'оновив(ла) книгу';
+    const date = new Date(item.timestamp).toLocaleString('uk-UA', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    const safeGoogleId = escapeHtml(item.googleId);
+
+    const coverId = `feed-cover-${item.userId}-${safeGoogleId}-${item.timestamp}`;
+    const titleId = `feed-title-${item.userId}-${safeGoogleId}-${item.timestamp}`;
+
+    if (item.googleId) {
+      setTimeout(() => fetchFeedBookInfo(item.googleId, coverId, titleId), 0);
+    }
+
+    return `
+      <div class="feed-card shadow-sm" onclick="openFeedItem('${safeGoogleId}', ${item.userId})" style="cursor:pointer;">
+        <div id="${coverId}" class="feed-card-thumb d-flex align-items-center justify-content-center text-muted"><i class="bi bi-book"></i></div>
+        <div class="feed-card-content">
+          <div class="mb-1" style="font-size: 0.95rem;">
+            <strong>${displayName}</strong> <span class="text-muted">${label}</span>
+            <strong id="${titleId}" class="ms-1" style="color:var(--amber);">...</strong>
+          </div>
+          <div class="feed-time">${date}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function fetchFeedBookInfo(googleId, coverId, titleId) {
+  try {
+    const b = await apiFetch(`/api/books/${encodeURIComponent(googleId)}`);
+    const coverEl = document.getElementById(coverId);
+    const titleEl = document.getElementById(titleId);
+    
+    if (titleEl) {
+      titleEl.textContent = b.title || 'Невідома книга';
+    }
+    if (coverEl && b.thumbnailUrl) {
+      const img = document.createElement('img');
+      img.src = b.thumbnailUrl;
+      img.className = 'feed-card-thumb';
+      img.alt = b.title || '';
+      coverEl.replaceWith(img);
+    }
+  } catch (_) {
+    const titleEl = document.getElementById(titleId);
+    if (titleEl) titleEl.textContent = 'Невідома книга';
+  }
+}
+
+async function openFeedItem(googleId, targetUserId) {
+  const body = document.getElementById('feedItemBody');
+  body.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div></div>';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('feedItemModal')).show();
+
+  try {
+    let url = `/api/v1/shelves/byGoogleId?googleId=${encodeURIComponent(googleId)}`;
+    if (targetUserId) url += `&targetUserId=${targetUserId}`;
+    const item = await apiFetch(url);
+    if (!item || !item.bookTitle) throw new Error("Not found");
+    
+    const stars = renderStars(item.userRating || 0);
+    const statusLabel = STATUS_LABEL[item.bookStatus] || item.bookStatus;
+    
+    body.innerHTML = `
+      <h5 class="mb-1" style="font-family:'Playfair Display',serif;">${escapeHtml(item.bookTitle)}</h5>
+      <p class="text-muted small mb-3">Статус: <strong>${statusLabel}</strong></p>
+      <div class="mb-3">${stars}</div>
+      ${item.finishedPercentage ? `<div class="progress mb-2" style="height:4px;"><div class="progress-bar" style="width:${item.finishedPercentage}%;background:var(--amber)"></div></div><p class="small text-muted mb-3">${item.finishedPercentage}% прочитано</p>` : ''}
+      ${item.review ? `<div class="p-3 bg-light rounded fst-italic" style="border-left: 3px solid var(--amber);">"${escapeHtml(item.review)}"</div>` : '<p class="text-muted small">Немає відгуку.</p>'}
+      <div class="mt-4 text-end">
+        <button class="btn btn-sm btn-outline-secondary" onclick="bootstrap.Modal.getInstance(document.getElementById('feedItemModal')).hide(); openBookDetail('${escapeHtml(item.googleId)}')">Детальніше про книгу</button>
+      </div>
+    `;
+  } catch (err) {
+    bootstrap.Modal.getInstance(document.getElementById('feedItemModal')).hide();
+    openBookDetail(googleId);
   }
 }
 
 function renderUsersList(users) {
   const el = document.getElementById('usersList');
-  if (!users || !users.length) {
+  const me = getStoredUsername();
+  const visibleUsers = (users || []).filter(u => u.isProfilePublic || u.username === me);
+  if (!visibleUsers.length) {
     el.innerHTML = '<span class="text-muted small">Інших користувачів не знайдено.</span>';
     return;
   }
-  const me = getStoredUsername();
-  el.innerHTML = users.map(u => `
+  el.innerHTML = visibleUsers.map(u => `
     <span class="user-pill ${u.username === me ? 'active' : ''}"
           onclick="loadUserShelf(${u.id}, '${escapeHtml(u.username)}', this)">
       <i class="bi bi-person"></i> ${escapeHtml(u.username)}
@@ -607,7 +726,15 @@ async function loadUserShelf(userId, username, pillEl) {
       </h5>`;
     c.appendChild(shelfBody);
   } catch (err) {
-    c.innerHTML += '<div class="alert alert-danger mt-2">Не вдалося завантажити полицю цього користувача. Спробуйте ще раз.</div>';
+    if (err.status === 403) {
+      c.innerHTML = `
+        <h5 class="shelf-group-title mb-3">
+          <i class="bi bi-person me-1"></i>Полиця ${escapeHtml(username)}
+        </h5>
+        <div class="alert alert-warning mt-2"><i class="bi bi-lock-fill me-2"></i>Цей профіль є приватним.</div>`;
+    } else {
+      c.innerHTML += '<div class="alert alert-danger mt-2">Не вдалося завантажити полицю цього користувача. Спробуйте ще раз.</div>';
+    }
   }
 }
 
@@ -632,10 +759,14 @@ async function loadProfile() {
   try {
     _myProfile = await apiFetch('/api/v1/users/me');
     renderProfileInfo(_myProfile);
-    // Pre-fill edit fields
     document.getElementById('editUsername').value = _myProfile.username || '';
     document.getElementById('editEmail').value    = _myProfile.email    || '';
-    // Check admin role and show panel
+    
+    const privacyToggle = document.getElementById('privacyToggle');
+    if (privacyToggle) {
+      privacyToggle.checked = _myProfile.isProfilePublic;
+    }
+    
     checkAdminAndLoad(_myProfile);
   } catch (err) {
     document.getElementById('profileInfo').innerHTML =
@@ -657,7 +788,6 @@ function renderProfileInfo(u) {
 }
 
 // ── Admin detection ───────────────────────────────────────────
-// Uses the isAdmin field on UserResponse (added in recent backend update).
 async function checkAdminAndLoad(myUser) {
   if (!myUser.isAdmin) {
     document.getElementById('adminPanel').style.display = 'none';
@@ -719,7 +849,19 @@ async function saveProfile() {
     renderProfileInfo(updated);
     // Update session username if it changed
     if (updated.username) {
-      sessionStorage.setItem('gf_user', updated.username);
+      const oldAuth = sessionStorage.getItem('gf_auth');
+      if (oldAuth && oldAuth.startsWith('Basic ')) {
+        try {
+          const decoded = atob(oldAuth.substring(6));
+          const colonIdx = decoded.indexOf(':');
+          if (colonIdx > 0) {
+            const pwd = decoded.substring(colonIdx + 1);
+            saveSession(updated.username, pwd);
+          }
+        } catch(e) {}
+      } else {
+        sessionStorage.setItem('gf_user', updated.username);
+      }
       document.getElementById('usernameDisplay').textContent = updated.username;
     }
     okEl.style.display = 'block';
@@ -729,6 +871,24 @@ async function saveProfile() {
   } finally {
     btn.disabled  = false;
     btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Зберегти зміни';
+  }
+}
+
+async function togglePrivacy() {
+  const toggle = document.getElementById('privacyToggle');
+  if (!toggle) return;
+  const isPublic = toggle.checked;
+  toggle.disabled = true;
+  
+  try {
+    const updated = await apiFetch(`/api/v1/users/me/privacy?isPublic=${isPublic}`, { method: 'PATCH' });
+    _myProfile.isProfilePublic = updated.isProfilePublic;
+    showToast('Налаштування приватності збережено', 'success');
+  } catch (err) {
+    toggle.checked = !isPublic;
+    showToast('Не вдалося зберегти налаштування приватності', 'danger');
+  } finally {
+    toggle.disabled = false;
   }
 }
 

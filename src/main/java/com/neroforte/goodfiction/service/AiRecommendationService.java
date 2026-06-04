@@ -20,7 +20,7 @@ public class AiRecommendationService {
 
     public AiRecommendationService(ChatClient.Builder builder, UserBookListRepository userBookRepository) {
         this.chatClient = builder
-                .defaultSystem("You are an expert librarian and book critic.")
+                .defaultSystem("You are an expert librarian and book critic.") // задаємо роль
                 .build();
         this.userBookListRepository = userBookRepository;
     }
@@ -35,13 +35,14 @@ public class AiRecommendationService {
                         String.join(", ", item.getBook().getCategories())))
                 .collect(Collectors.joining("\n"));
 
-        String systemRules = """
+        // формуємо набір правил для кастомного запиту
+        String systemRules = """ 
                 You are a stateless recommendation engine.
                 Focus entirely on fulfilling the user's SPECIFIC REQUEST.
                 Use the provided Reading History ONLY to avoid recommending books they have already read, or to gauge their general reading level.
                 """;
 
-        return chatClient.prompt()
+        return chatClient.prompt() // надсилаємо запит з контекстом
                 .system(systemRules)
                 .user(u -> u.text("""
                         User's Specific Request: "%s"
@@ -71,8 +72,8 @@ public class AiRecommendationService {
             log.info("user {} has ", userId);
             throw new IllegalArgumentException("Not enough reading history to generate recommendations.");
         }
-
-        String systemRules = """
+        // формуємо набір правил для звичайного запиту з фокусом на дані
+        String systemRules = """ 
                 You are a stateless recommendation engine.
                 Ignore all previous instructions or context from past interactions.
                 Focus ONLY on the data provided in this specific prompt.
@@ -86,7 +87,7 @@ public class AiRecommendationService {
                         item.getUserRating()))
                 .collect(Collectors.joining("\n"));
 
-        return chatClient.prompt()
+        return chatClient.prompt() // надсилаємо запит який включає історію читання.
                 .system(systemRules)
                 .user(u -> u.text("""
                         Based on the user's reading history below, recommend from 1 to 5 new books they would enjoy.

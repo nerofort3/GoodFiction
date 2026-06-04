@@ -63,6 +63,11 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body("password updated successfully");
     }
 
+    @PatchMapping("/me/privacy")
+    public ResponseEntity<UserResponse> togglePrivacy(Authentication authentication, @RequestParam boolean isPublic) {
+        Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(userService.togglePrivate(userId, isPublic));
+    }
 
     @PostMapping()
     public UserResponse createUser(@RequestBody @Valid UserRegisterRequest user) {

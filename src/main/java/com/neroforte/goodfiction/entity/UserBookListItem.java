@@ -2,10 +2,7 @@ package com.neroforte.goodfiction.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.userdetails.User;
 @Entity
 @Table(name = "user_books")
@@ -19,10 +16,14 @@ public class UserBookListItem {
     @GeneratedValue
     private Long id;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne
     @JoinColumn(name="user_id", nullable = false)
     private UserEntity user;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne
     @JoinColumn(name="book_id", nullable = false)
     private BookEntity book;

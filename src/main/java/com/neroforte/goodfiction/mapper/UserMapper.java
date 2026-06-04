@@ -13,6 +13,7 @@ public interface UserMapper {
 
 
     @Mapping(target = "isAdmin", source = "roles", qualifiedByName = "checkIfAdmin")
+    @Mapping(target = "isProfilePublic", source = "profilePublic")
     UserResponse userToUserResponse(UserEntity user);
 
     UserEntity userRegisterToUserEntity (UserRegisterRequest userRegisterRequest);

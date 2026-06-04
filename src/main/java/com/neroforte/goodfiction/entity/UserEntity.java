@@ -37,9 +37,16 @@ public class UserEntity {
     private String roles;
 
     @Column
+    @Builder.Default
+    private boolean isProfilePublic = true;
+
+    @Column
     private Instant createdDate;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<UserBookListItem> bookListItems = new ArrayList<>();
 
 
