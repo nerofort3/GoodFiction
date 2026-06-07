@@ -20,15 +20,16 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     @NotNull(message = "name cannot be null")
     private String username;
 
-    @Column(unique = true)
-    @Email(message = "email cannot be null")
+    @Column(unique = true, nullable = false)
+    @NotNull(message = "email cannot be null")
+    @Email(message = "email must be a valid email address")
     private String email;
 
-    @Column
+    @Column(nullable = false)
     @NotBlank(message = "password cannot be blank")
     @Size(min = 8)
     private String password;
@@ -36,7 +37,7 @@ public class UserEntity {
     @Column
     private String roles;
 
-    @Column
+    @Column(nullable = false)
     @Builder.Default
     private boolean isProfilePublic = true;
 

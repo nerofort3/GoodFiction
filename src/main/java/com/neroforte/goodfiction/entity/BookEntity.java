@@ -43,7 +43,7 @@ public class BookEntity {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "book_categories", joinColumns = @JoinColumn(name = "book_id"))
-    @Column(name = "category")
+    @Column(name = "category", nullable = false)
     @Builder.Default
     private List<String> categories = new ArrayList<>();
 }

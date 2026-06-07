@@ -91,7 +91,6 @@ public class UserBookListService {
      */
     @Transactional
     public UserBookListItemResponse addBookToShelfByTitle(String status, long userId, String title, int rating) {
-
         List<BookEntity> searchResults = bookService.searchByTitle(title);
         if (searchResults.isEmpty()) {
             throw new NotFoundException("Book with such title was not found on Google Books: " + title);
