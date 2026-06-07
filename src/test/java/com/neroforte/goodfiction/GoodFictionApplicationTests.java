@@ -1,10 +1,8 @@
 package com.neroforte.goodfiction;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class GoodFictionApplicationTests {
+class GoodFictionApplicationTests extends BaseIntegrationTest {
 
     @Test
     void contextLoads() {

@@ -13,7 +13,7 @@ import org.springframework.security.core.userdetails.User;
 public class UserBookListItem {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ToString.Exclude
